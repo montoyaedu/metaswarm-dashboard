@@ -1,12 +1,20 @@
-# Implementation Plan — Issue #1 (v4)
+# Implementation Plan — Issue #1 (v5, FINAL — gate iteration closed)
 
-- **status:** draft (awaiting Plan Review Gate v4)
+- **status:** **APPROVED FOR EXECUTION** (operator-binding; no further plan-review-gate iterations)
 - **created_at:** 2026-05-06
 - **issue:** [#1 — feat: MVP read-only dashboard for multi-project metaswarm visibility](https://github.com/montoyaedu/metaswarm-dashboard/issues/1)
 - **beads_epic:** `metaswarm-dashboard-lo0`
-- **author:** orchestrator (Claude) after round-3 plan-review-gate failures
+- **author:** orchestrator (Claude) after round-4 plan-review-gate; operator declared gate iteration closed (round-4 → v5, option "B")
 - **target estimate:** ~1 working week
 - **execution model:** metaswarm orchestrated-execution (4-phase per WU: IMPLEMENT → VALIDATE → ADVERSARIAL REVIEW → COMMIT)
+- **GATE-BINDING DECISIONS (NOT to be re-litigated by future reviewers):**
+  - `prsMergedLast7d: null` always in MVP — operator opted out of `gh` integration (round-3 → v4, option "a"). README troubleshooting documents the deliberate scope reduction.
+  - a11y `vitest-axe` removed — not in issue scope (round-3 → v4, option "a").
+  - Coverage 100% threshold runs only at root `test:coverage` (gated to WU-7), so intermediate WUs aren't blocked by other-package incompleteness (round-3 → v4, option "a").
+  - §0 BEADS setup is out-of-band (no portable bootstrap script ships) — operator chose this over WU-0 (round-2 → v3, option "c").
+  - `packages/types` four-package shape kept — operator chose this over consolidating into a consumer (round-2 → v3, option "a").
+  - Walkthrough WU-7 is operator-real only, no nightly-fixture CI duplication (round-2 → v3, option "b").
+  - **Plan-review-gate ends at v4.** Subsequent reviewers should evaluate IMPLEMENTATION via the orchestrated-execution adversarial-review gate (per-WU PASS/FAIL), not re-open these decisions.
 
 ---
 
@@ -194,6 +202,7 @@ export default {
   - `.github/workflows/ci.yml` (rewrite: `strategy.matrix.os: [ubuntu-latest, macos-latest]`, node 22.12.0, runs lint/typecheck/test:coverage/build/smoke; **smoke runs on BOTH OSes**: `node ./bin/metaswarm-dashboard --help` after build; `shellcheck bin/*.sh` ubuntu-only since shellcheck is not pre-installed on macos GH runners)
 - **out_of_scope:** product code (collector reading, server endpoints, SPA views), README content (WU-7).
 - **dod_items:**
+  0. **Node-version precondition (run first):** `node --version` reports `v22.12.0` or higher. If absent, the operator runs `nvm install 22.12.0 && nvm use 22.12.0` before anything else. CI satisfies this via `actions/setup-node@v4 with node-version-file: .nvmrc`. WU-1 cannot proceed otherwise. (Closes round-4 Feas-1.)
   1. `nvm use && npm ci && npm run lint && npm run typecheck && npm run test && npm run build` exits 0 on a fresh clone with node 22.12.0.
   2. TS strict (`"strict": true, "noUncheckedIndexedAccess": true`) inherited by all four packages.
   3. ESLint config bans `any` (`@typescript-eslint/no-explicit-any: error`).
@@ -201,9 +210,9 @@ export default {
   5. CI runs `shellcheck` on `bin/*.sh` (ubuntu lane only).
   6. `bin/metaswarm-dashboard --help` exits 0 and prints the three subcommand names — verified on **both** ubuntu and macos lanes after build.
   7. Root `npm run build` script orchestrates: build types first, then collector + server + web. `prebuild`/`pretypecheck`/`pretest` lifecycle hook ensures types/dist is fresh before any consumer typecheck or test.
-  8. `vitest.config.ts` reads coverage thresholds from `.coverage-thresholds.json` via ESM JSON import (`with { type: 'json' }`); thresholds change in the JSON file are picked up without code edits.
+  8. `vitest.config.ts` reads coverage thresholds from `.coverage-thresholds.json` via ESM JSON import (`with { type: 'json' }`); thresholds change in the JSON file are picked up without code edits. **Vitest 4 field name is `test.projects`** (not the deprecated `vitest.workspace.ts` file).
   9. A trivial test in each consumer package (`packages/{collector,server,web}/src/__tests__/types-import.test.ts`) imports a type AND a Zod schema from `@metaswarm-dashboard/types` and asserts compatibility — proves the workspace dep + build pipeline + exports map are healthy end-to-end.
-  10. **`.gitignore` invariant test:** `packages/collector/src/__tests__/gitignore-invariant.test.ts` runs `git check-ignore --quiet -- .beads/plans/active-plan.md .beads/issues.jsonl .beads/knowledge/patterns.jsonl` and asserts each call exits non-zero (i.e., not ignored). Catches future commits that re-tighten `.gitignore` and silently break dogfooding cross-machine portability.
+  10. **`.gitignore` invariant test (expanded):** `packages/collector/src/__tests__/gitignore-invariant.test.ts` runs `git check-ignore --quiet --` against ONE representative path per protected directory plus the issues.jsonl: `.beads/plans/active-plan.md`, `.beads/context/.keep`, `.beads/knowledge/patterns.jsonl`, `.beads/knowledge/decisions.jsonl`, `.beads/knowledge/anti-patterns.jsonl`, `.beads/issues.jsonl`. Each call must exit non-zero (not ignored). The test also reads `.beads/.gitignore` and asserts none of the listed paths are matched by patterns there. (Closes round-4 Comp-2.)
   11. **Rollback note:** revertable by `git revert` of the WU-1 commit; the only side effect is `node_modules/` which `npm ci` rebuilds.
 - **tests:** sanity tests per package; types-import test (DoD #9); gitignore-invariant test (DoD #10).
 - **validation_commands:**
@@ -265,7 +274,7 @@ export default {
   8. Agent with 0 completed tasks → `AgentMetrics` row with `tasksCompleted: 0, successRate: 0`.
   9. Agent with all-success → `successRate: 1.0` (no division-by-zero).
   10. **Single-snapshot weekly fallback:** if the prior week had no daily snapshots, the weekly file contains `{ ..., complete: false }`. Schema explicitly includes the `complete` field.
-  11. DST-spring-forward (2026-03-29 EU) and DST-fall-back (2026-10-25 EU) each produce exactly one daily key (UTC).
+  11. DST coverage: tests assert that **all four** DST transition days (US spring-forward 2026-03-08, EU spring-forward 2026-03-29, US fall-back 2026-11-01, EU fall-back 2026-10-25) produce exactly one daily key each (UTC). Each test runs with `process.env.TZ` set to the relevant zone (`America/Los_Angeles`, `Europe/Berlin`) plus a UTC baseline to prove TZ independence. (Closes round-4 Comp-3.)
   12. ISO-week boundaries: 2024-12-30 UTC → daily `2024-12-30`, weekly `2025-W01`. 2026-12-31 UTC → weekly `2026-W53`.
   13. **Zero-footprint:** `zero-footprint.test.ts` snapshots fixture host repos' contents (recursive sha256), runs `collect --project` and `collect --all`, re-snapshots, asserts equality.
   14. `bd` invoked with `execFile` (no shell) and 30s timeout; ENOENT surfaces actionable error referencing the README's "BEADS prerequisite" section.
@@ -334,8 +343,8 @@ export default {
 - **out_of_scope:** Project detail and Agents views (WU-6); API server (done in WU-4); a11y assertion library (operator opted out of vitest-axe at round-3 → v4).
 - **dod_items:**
   1. `npm run build --workspace packages/web` produces `packages/web/dist/index.html` plus assets, exits 0.
-  2. ProjectsIndex renders one `<NCard>` per project with all four metrics (`activeTasks`, `blockedTasks`, `prsMergedLast7d` rendered as "—" when `null` (which is **always** in MVP per §2.6), `lastActivityAt` formatted relative-time).
-  3. Clicking a card navigates via `router.push({ name: 'project-detail', params: { name } })` — asserted in jsdom test against the real `vue-router@4` instance with `createWebHistory()`.
+  2. ProjectsIndex renders one `<NCard>` per project with all four metrics (`activeTasks`, `blockedTasks`, `prsMergedLast7d` rendered as "—" when `null` (which is **always** in MVP per §2.6), `lastActivityAt` formatted relative-time **OR "Never" when `null`** — explicit null-handling, no crash). (Closes round-4 Comp-5.)
+  3. Clicking a card navigates via `router.push({ name: 'project-detail', params: { name } })` — asserted in jsdom test against the real `vue-router@4` instance with `createWebHistory()`. **Back-nav minimal (with stub ProjectDetail):** the same test mounts a minimal stub component at the `project-detail` route, calls `router.back()`, and asserts the route is back at `projects-index` AND ProjectsIndex is re-rendered. The full E2E with the real ProjectDetail is in WU-6.5; this WU-5 minimal back-nav guarantees the router config is correct **before** checkpoint #2 ships. (Closes round-4 Comp-1.)
   4. Empty state: when `hasMetrics === false`, view shows `EmptyState` with text ``No metrics yet — run `metaswarm-dashboard collect` ``.
   5. naive-ui `NConfigProvider` wraps the app with `darkTheme`.
   6. **Deterministic screenshot:** captured via the `metaswarm:visual-review` skill against the committed fixture data dir served by a local instance of the WU-4 server. Reproducible via `npm run screenshots:projects-index`. CI does NOT auto-regenerate.
@@ -360,11 +369,13 @@ export default {
   1. ProjectDetail renders `<NDataTable>` with sortable columns: agent, tasksCompleted, successRate (% formatted), avgDurationSeconds.
   2. ProjectDetail renders the throughput sparkline (14 days from `ThroughputPoint[]`) and a list of recent work units (max 25).
   3. AgentsView renders cross-project aggregates from `GET /api/agents`.
-  4. **No write actions in the UI** — enforced by the ESLint `no-restricted-syntax` rule on `packages/web/src/**/*.{ts,vue}`, which fails the build if any `POST`/`PUT`/`DELETE`/`PATCH` string literal appears outside `__tests__/**`. Server-side 405 method guard (WU-4.11) is the runtime second guarantee.
-  5. **Back-nav E2E (issue DoD bullet):** `back-nav-e2e.test.ts` mounts `App.vue` with the real `vue-router@4` instance, navigates from ProjectsIndex → ProjectDetail (real component) via card click, then calls `router.back()`, and asserts the route is back at `projects-index` AND the cards re-render. This is the only test that exercises the full nav cycle with the real ProjectDetail.
-  6. Dispatcher smoke: `child_process.execFile('node', ['./bin/metaswarm-dashboard', '--help'])` exits 0 and stdout contains "collect", "serve", "config init".
-  7. **Rollback note:** revertable by `git revert`.
-- **validation_commands:** `npm run typecheck --workspace packages/web` ; `npm run test --workspace packages/web` ; `npm run lint --workspace packages/web` (catches ESLint guard violations) ; `npm run test --workspace packages/collector` ; `npm run build --workspace packages/web` ; `node ./bin/metaswarm-dashboard --help`
+  4. **No write actions in the UI** — enforced at two layers: (a) ESLint `no-restricted-syntax` rule on `packages/web/src/**/*.{ts,vue}` covers `<script>` block literals (the AST selector `Literal[value="POST"]` etc. matches ESTree `Literal` nodes only); (b) **Vue `<template>` blocks are explicitly NOT covered by the ESLint rule** because `vue-eslint-parser` produces a separate AST (V-prefixed nodes). The runtime 405 method guard in WU-4.11 is the load-bearing guarantee for any write attempt originating in a template. The DoD bullet is satisfied by the union: ESLint catches script-side mistakes early; Fastify 405 catches anything that slips through at runtime. (Closes round-4 Feas-2.)
+  5. **Back-nav E2E (issue DoD bullet, full version):** `back-nav-e2e.test.ts` mounts `App.vue` with the real `vue-router@4` instance, navigates from ProjectsIndex → ProjectDetail (**real component**) via card click, then calls `router.back()`, and asserts the route is back at `projects-index` AND the cards re-render. This is the only test that exercises the full nav cycle with the real ProjectDetail. (WU-5.3 already covered the minimal version with a stub ProjectDetail, so checkpoint #2 ships with verified router config.)
+  6. Dispatcher smoke (top-level): `child_process.execFile('node', ['./bin/metaswarm-dashboard', '--help'])` exits 0 and stdout contains "collect", "serve", "config init".
+  7. **Per-subcommand dispatcher smoke (closes round-4 Comp-4):** three additional spawn-based tests assert that `bin/metaswarm-dashboard collect --help`, `bin/metaswarm-dashboard serve --help`, `bin/metaswarm-dashboard config init --help` each exit 0 and produce output that contains the per-subcommand description text registered by the respective `cli/*.ts` module. Catches commander wiring bugs that the in-process help-text imports (WU-2.6, WU-3.18, WU-4.17) cannot.
+  8. Validation_commands include a build step **before** the smoke tests, so `packages/{collector,server}/dist` exists when the dispatcher imports from them. (Closes round-4 Feas/Comp warning.)
+  9. **Rollback note:** revertable by `git revert`.
+- **validation_commands:** `npm run typecheck --workspace packages/web` ; `npm run test --workspace packages/web` ; `npm run lint --workspace packages/web` (catches ESLint guard violations) ; `npm run test --workspace packages/collector` ; **`npm run build`** (root, builds all packages so dispatcher can resolve subpath imports) ; `node ./bin/metaswarm-dashboard --help` ; `node ./bin/metaswarm-dashboard collect --help` ; `node ./bin/metaswarm-dashboard serve --help` ; `node ./bin/metaswarm-dashboard config init --help`
 
 ### WU-7 — README, screenshots, walkthrough log, follow-up issues, **global coverage gate**
 
@@ -510,3 +521,35 @@ The MVP does NOT shell to `gh` or fetch from the GitHub API. `prsMergedLast7d` i
 | **OQ backfill behavior** | Decided: no backfill on non-Monday runs | §2.2, WU-3.4 |
 | **OQ no-write static check** | Replaced manual review with ESLint `no-restricted-syntax` rule scoped to web src | WU-6.4 |
 | **OQ fixture data dir not in WU-5 file_scope** | Added explicitly | WU-5 file_scope |
+
+---
+
+## 9. Round-4 → v5 fixes (audit trail; FINAL)
+
+Round 4 produced 9 blockers + 8 warnings. Of these, **2 blockers are operator-binding decisions** the gate cannot revisit (see status header at top): `prsMergedLast7d: null` (round-3 → v4 option "a") and §0 out-of-band setup (round-2 → v3 option "c"). These were correctly re-flagged by ciecutamente reviewers but are off-limits for further iteration. The remaining 7 refinements are applied here as v5; warnings deemed marginal are noted.
+
+| Round-4 finding | Resolution in v5 | Where |
+|---|---|---|
+| **Feas-1** Node 22.12.0 not installed on host | New WU-1.0 precondition: verify node version before any other action; CI uses `setup-node@v4 with node-version-file: .nvmrc` | WU-1.0 |
+| **Feas-2** ESLint `no-restricted-syntax` blind to Vue `<template>` blocks | DoD claim narrowed: ESLint covers `<script>`; Fastify 405 (WU-4.11) is the load-bearing guard for any write attempt at runtime; both layers documented as the union that satisfies the issue's no-write DoD | WU-6.4 |
+| **Feas-W3** vitest 4 `test.projects` field name | Documented explicitly | WU-1.8 |
+| **Feas-W4** CI rewrite removes existing enforcement-command parser | Acknowledged; `.coverage-thresholds.json.enforcement.command` becomes documentation-only, root vitest config wires thresholds directly | §2.10, §4.1 |
+| **Feas-W5** `bin/` resolution chain fragility | Caught by WU-6.6 + WU-6.7 dispatcher smoke tests; root `npm run build` step added as a precondition (WU-6.8) | WU-6.8 |
+| **Compl-1** WU-5 ships checkpoint #2 without back-nav verified | WU-5.3 expanded: minimal back-nav with stub ProjectDetail BEFORE the checkpoint; full E2E with real ProjectDetail still in WU-6.5 | WU-5.3 |
+| **Compl-2** Gitignore invariant test path-incomplete | Expanded to one path per protected directory (`plans`, `context`, `knowledge`× multiple files, `issues.jsonl`); also asserts `.beads/.gitignore` does not match these | WU-1.10 |
+| **Compl-3** DST coverage US-blind | Added US dates (2026-03-08, 2026-11-01) + tests run with `process.env.TZ` set to LA / Berlin / UTC | WU-3.11 |
+| **Compl-4** Per-subcommand `--help` not verified end-to-end via dispatcher | New WU-6.7: spawn `bin/metaswarm-dashboard {collect,serve,config init} --help` and assert each subcommand's description text appears | WU-6.7 |
+| **Compl-5** `lastActivityAt: null` undefined behavior | Renders "Never" when null; explicit dod_item; no crash | WU-5.2 |
+| **Compl-W6** WU-6 smoke fragile without prior `npm run build` | Added explicit `npm run build` to WU-6 validation_commands before any smoke | WU-6.8, WU-6 validation |
+| **Compl-W7** WU-4 isolation fragility | Per-package `npm run test --workspace packages/server` is ordered after WU-3; no separate fix needed since plan is sequential per §7 | n/a |
+| **Scope-1** `prsMergedLast7d: null` violates issue DoD literal | **Operator-binding decision (round-3 → v4 option "a")** — gate exception per status header. README troubleshooting is the documented mitigation; follow-up issue WU-7.5 captures the deferral. | header, §2.6, WU-7.5 |
+| **Scope-2** §0 out-of-band smuggling | **Operator-binding decision (round-2 → v3 option "c")** — gate exception per status header. WU-1.10 catches `.gitignore` regressions. | header, §0 |
+| **Scope-W3** `packages/types` over-engineering | **Operator-binding (round-2 → v3 option "a")** — kept | header, §2.1 |
+| **Scope-W4** ESLint duplicate of 405 guard | Kept (script-side fast feedback) but DoD claim narrowed to script blocks; runtime 405 is load-bearing | WU-6.4 |
+| **Scope-W5** WU-1.10 gitignore test over-engineered | Kept and expanded — round-3 Compl-5 had explicitly required this; the two reviewers' opinions diverge and the operator preserves the test | WU-1.10 |
+
+---
+
+## 10. Implementation kickoff
+
+Status is **APPROVED FOR EXECUTION**. Next action: orchestrator begins WU-1, applying the 4-phase metaswarm orchestrated-execution loop (IMPLEMENT → VALIDATE → ADVERSARIAL REVIEW → COMMIT). Subsequent reviewers operate at the IMPLEMENTATION level (per-WU PASS/FAIL with file:line evidence), not at the plan level.
