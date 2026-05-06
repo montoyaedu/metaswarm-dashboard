@@ -10,17 +10,7 @@ coverage/
 .DS_Store
 *.log
 
-# BEADS runtime
-.beads/beads.db
-.beads/daemon.lock
-.beads/daemon.pid
-.beads/daemon.log
-.beads/temp/
-
-# BEADS execution state (working files for context recovery)
-.beads/context/
-.beads/plans/
-
-# Beads / Dolt files (added by bd init)
-.dolt/
-.beads-credential-key
+# BEADS runtime is handled by .beads/.gitignore (created by `bd init`).
+# Do NOT exclude .beads/plans/, .beads/context/, .beads/knowledge/, or .beads/issues.jsonl
+# from this root .gitignore — those are the metaswarm workflow's portable, cross-machine
+# state and MUST be committed so other clones (and future you on a new laptop) can recover.
