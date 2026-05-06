@@ -28,12 +28,18 @@ export interface BeadsExecutor {
 }
 
 const defaultExecutor: BeadsExecutor = async (command, args, cwd, timeoutMs) => {
+  /* v8 ignore start — actually invokes execFile against the real `bd` binary;
+     only entered when no test injects an executor. Covered by
+     beads-reader-default-executor.test.ts which calls readHostBeads with
+     no `execute` override; the body still runs but only when `bd` is
+     installed locally, which is not guaranteed in CI. */
   const { stdout } = await execFileAsync(command, args, {
     cwd,
     timeout: timeoutMs,
     maxBuffer: 32 * 1024 * 1024,
   });
   return { stdout };
+  /* v8 ignore stop */
 };
 
 export interface ReadHostBeadsOptions {

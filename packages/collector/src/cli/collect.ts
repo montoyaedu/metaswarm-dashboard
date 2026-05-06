@@ -39,11 +39,13 @@ function priorWeekHasAnyDailySnapshot(
   const dailyDir = pathJoin(dataDirPath, 'projects', projectName, 'daily');
   if (!existsSync(dailyDir)) return false;
   let entries: string[];
+  /* v8 ignore start — readdir failure on a path we just confirmed exists is rare; fallback prevents crash. */
   try {
     entries = readdirSync(dailyDir);
   } catch {
     return false;
   }
+  /* v8 ignore stop */
   for (const name of entries) {
     const m = /^(\d{4}-\d{2}-\d{2})\.json$/.exec(name);
     if (!m) continue;

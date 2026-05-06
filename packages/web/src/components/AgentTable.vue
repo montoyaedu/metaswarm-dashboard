@@ -3,6 +3,8 @@ import type { AgentBreakdown } from '@metaswarm-dashboard/types/api';
 import { NDataTable } from 'naive-ui';
 import { h, computed, type VNode } from 'vue';
 
+import { bySortKey, formatDuration } from '../lib/table-sorters.js';
+
 const props = defineProps<{ agents: AgentBreakdown[] }>();
 
 interface Row {
@@ -25,12 +27,6 @@ const rows = computed<Row[]>(() =>
   })),
 );
 
-function formatDuration(seconds: number): string {
-  if (seconds < 60) return `${seconds.toFixed(0)}s`;
-  if (seconds < 3600) return `${(seconds / 60).toFixed(1)}m`;
-  return `${(seconds / 3600).toFixed(1)}h`;
-}
-
 const columns = [
   {
     title: 'Agent',
@@ -42,7 +38,7 @@ const columns = [
   {
     title: 'Tasks completed',
     key: 'tasksCompleted',
-    sorter: (a: Row, b: Row): number => a.tasksCompleted - b.tasksCompleted,
+    sorter: bySortKey<Row, 'tasksCompleted'>('tasksCompleted'),
     render: (row: Row): VNode =>
       h(
         'span',
@@ -53,14 +49,14 @@ const columns = [
   {
     title: 'Success rate',
     key: 'successRate',
-    sorter: (a: Row, b: Row): number => a.successRate - b.successRate,
+    sorter: bySortKey<Row, 'successRate'>('successRate'),
     render: (row: Row): VNode =>
       h('span', { 'data-testid': `cell-rate-${row.agent}` }, row.successRateLabel),
   },
   {
     title: 'Avg duration',
     key: 'avgDurationSeconds',
-    sorter: (a: Row, b: Row): number => a.avgDurationSeconds - b.avgDurationSeconds,
+    sorter: bySortKey<Row, 'avgDurationSeconds'>('avgDurationSeconds'),
     render: (row: Row): VNode =>
       h('span', { 'data-testid': `cell-duration-${row.agent}` }, row.avgDurationLabel),
   },

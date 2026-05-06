@@ -58,6 +58,16 @@ describe('GET /api/projects/:name', () => {
     expect(body.error.code).toBe('project_not_found');
     await app.close();
   });
+
+  it('uses the default now() when buildServer is called without a `now` option', async () => {
+    // Covers projects-by-name.ts L19 default-arg branch.
+    const app = await buildServer({ dataDir: DATA_DIR, staticRoot: STATIC_ROOT });
+    const res = await app.inject({ method: 'GET', url: '/api/projects/alpha' });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.throughput).toHaveLength(14);
+    await app.close();
+  });
 });
 
 describe('GET /api/agents', () => {

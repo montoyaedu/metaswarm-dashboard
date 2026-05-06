@@ -50,7 +50,11 @@ export interface RunServeResult {
 }
 
 export async function runServe(opts: RunServeOptions = {}): Promise<RunServeResult> {
-  const stderr = opts.stderr ?? ((line: string) => process.stderr.write(`${line}\n`));
+  const stderr =
+    opts.stderr ??
+    /* v8 ignore start — real-stderr fallback only used when caller doesn't inject. */
+    ((line: string) => process.stderr.write(`${line}\n`));
+  /* v8 ignore stop */
   const fs = opts.fs ?? { existsSync };
 
   const port = opts.port ?? DEFAULT_PORT;

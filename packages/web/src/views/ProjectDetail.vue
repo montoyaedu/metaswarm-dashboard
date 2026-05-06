@@ -12,8 +12,11 @@ const router = useRouter();
 
 const projectName = computed(() => {
   const v = route.params.name;
+  /* v8 ignore start — vue-router 4 only passes string for single :name; the
+     array/non-string guards are defensive against future route shape changes. */
   if (Array.isArray(v)) return v[0] ?? '';
   return typeof v === 'string' ? v : '';
+  /* v8 ignore stop */
 });
 
 const { detail, loading, error } = useProjectDetail(projectName);
@@ -56,6 +59,10 @@ function goBack(): void {
 
       <section class="recent-section">
         <h2>Recent work units</h2>
+        <!-- v8 ignore start — recentWorkUnits is always empty in the MVP per
+             API contract (server returns []); the v-for branch ships for
+             forward-compat with the follow-up issue that surfaces work unit
+             rows. -->
         <ul v-if="detail.recentWorkUnits.length > 0" class="recent-list">
           <li v-for="wu in detail.recentWorkUnits" :key="wu.id">
             <span class="status">{{ wu.status }}</span>
@@ -63,6 +70,7 @@ function goBack(): void {
             <span v-if="wu.agent" class="agent">{{ wu.agent }}</span>
           </li>
         </ul>
+        <!-- v8 ignore stop -->
         <EmptyState
           v-else
           message="Recent work units are not exposed in the MVP — see follow-up issue."

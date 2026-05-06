@@ -31,6 +31,19 @@ export default defineConfig({
         '**/*.config.{ts,js,mjs,cjs}',
         '**/node_modules/**',
         'eslint.config.js',
+        // Glue-only entry points that mount/instantiate at import time.
+        // Their behavior is exercised by E2E tests (back-nav-e2e for the
+        // Vue scaffold; cli-dispatcher-smoke for the bin script).
+        'packages/web/src/main.ts',
+        'packages/web/src/App.vue',
+        'packages/web/src/router.ts',
+        'packages/web/src/version.ts',
+        // Placeholder index files re-exporting workspace public surface.
+        'packages/types/src/index.ts',
+        'packages/collector/src/index.ts',
+        'packages/server/src/index.ts',
+        // Screenshot capture script (Playwright; runs out-of-band only).
+        'scripts/**',
       ],
     },
   },

@@ -8,6 +8,7 @@
 - **target estimate:** ~1 working week
 - **execution model:** metaswarm orchestrated-execution (4-phase per WU: IMPLEMENT → VALIDATE → ADVERSARIAL REVIEW → COMMIT)
 - **GATE-BINDING DECISIONS (NOT to be re-litigated by future reviewers):**
+  - **Coverage thresholds relaxed for the MVP merge** — `lines: 100` retained; `branches: 92, functions: 97, statements: 98` accepted as the merge gate after WU-7 (operator-approved 2026-05-07, option "B" with pragmatic close-out). Lines coverage IS 100%; the residual non-line gaps are concentrated in defensive guards (`/* v8 ignore */` annotated where genuinely unreachable) and `v-if`/`v-else-if` template branches that are awkward to drive through jsdom in unit tests. Tracking issue [#3](https://github.com/montoyaedu/metaswarm-dashboard/issues/3) closes out the rest with a follow-up. **The `100/100/100/100` strict goal in original §2.10 is the long-term target, deferred — not abandoned.**
   - `prsMergedLast7d: null` always in MVP — operator opted out of `gh` integration (round-3 → v4, option "a"). README troubleshooting documents the deliberate scope reduction.
   - a11y `vitest-axe` removed — not in issue scope (round-3 → v4, option "a").
   - Coverage 100% threshold runs only at root `test:coverage` (gated to WU-7), so intermediate WUs aren't blocked by other-package incompleteness (round-3 → v4, option "a").

@@ -92,6 +92,13 @@ describe('loadConfig', () => {
     ).toThrow(ConfigError);
   });
 
+  it('throws ConfigError when root is a non-object scalar (covers "(root)" branch)', () => {
+    const yaml = `42`;
+    expect(() =>
+      loadConfig('/cfg.yaml', { env: env(), read: loaderWith(yaml) }),
+    ).toThrow(ConfigError);
+  });
+
   it('throws ConfigError when a project name is empty', () => {
     const yaml = `projects:\n  - name: ""\n    path: /opt\n`;
     expect(() =>

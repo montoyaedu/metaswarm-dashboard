@@ -4,6 +4,7 @@ import { computed, h, type VNode } from 'vue';
 
 import EmptyState from '../components/EmptyState.vue';
 import { useAgents } from '../composables/useAgents.js';
+import { bySortKey, formatDuration } from '../lib/table-sorters.js';
 
 const { agents, loading, error } = useAgents();
 
@@ -31,12 +32,6 @@ const rows = computed<Row[]>(() =>
   })),
 );
 
-function formatDuration(seconds: number): string {
-  if (seconds < 60) return `${seconds.toFixed(0)}s`;
-  if (seconds < 3600) return `${(seconds / 60).toFixed(1)}m`;
-  return `${(seconds / 3600).toFixed(1)}h`;
-}
-
 const columns = [
   {
     title: 'Agent',
@@ -48,7 +43,7 @@ const columns = [
   {
     title: 'Total tasks',
     key: 'totalTasksCompleted',
-    sorter: (a: Row, b: Row): number => a.totalTasksCompleted - b.totalTasksCompleted,
+    sorter: bySortKey<Row, 'totalTasksCompleted'>('totalTasksCompleted'),
     render: (row: Row): VNode =>
       h(
         'span',
@@ -59,7 +54,7 @@ const columns = [
   {
     title: 'Success rate',
     key: 'weightedSuccessRate',
-    sorter: (a: Row, b: Row): number => a.weightedSuccessRate - b.weightedSuccessRate,
+    sorter: bySortKey<Row, 'weightedSuccessRate'>('weightedSuccessRate'),
     render: (row: Row): VNode =>
       h(
         'span',
@@ -70,7 +65,7 @@ const columns = [
   {
     title: 'Avg duration',
     key: 'avgDurationSeconds',
-    sorter: (a: Row, b: Row): number => a.avgDurationSeconds - b.avgDurationSeconds,
+    sorter: bySortKey<Row, 'avgDurationSeconds'>('avgDurationSeconds'),
     render: (row: Row): VNode =>
       h(
         'span',

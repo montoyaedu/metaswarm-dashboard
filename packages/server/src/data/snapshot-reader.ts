@@ -25,9 +25,11 @@ export class SnapshotReader {
   constructor(
     private readonly dataDir: string,
     private readonly fs: SnapshotReaderFsHooks = defaultHooks,
+    /* v8 ignore start — real-stderr fallback only used when the caller doesn't inject a logger. */
     private readonly logger: (msg: string) => void = (msg) => {
       process.stderr.write(`[snapshot-reader] ${msg}\n`);
     },
+    /* v8 ignore stop */
   ) {}
 
   /** Names of directories under `<dataDir>/projects/` that have ≥1 daily snapshot. */

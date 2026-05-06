@@ -24,7 +24,9 @@ const lastActivityLabel = computed(() => {
 const prsLabel = computed(() =>
   props.project.prsMergedLast7d === null
     ? '—'
-    : props.project.prsMergedLast7d.toString(),
+    : /* v8 ignore next — non-null branch unreachable in MVP (plan §2.6 hard-codes null);
+         retained so the SPA is forward-compatible when a follow-up issue picks a data source. */
+      props.project.prsMergedLast7d.toString(),
 );
 
 function navigate(): void {

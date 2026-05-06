@@ -123,6 +123,11 @@ export function computeMetrics(
     .map(([agent, acc]) => ({
       agent,
       tasksCompleted: acc.completed,
+      // The `=== 0` branch is unreachable: agents are only added to
+      // `perAgent` when a row IS closed-in-last-7d, which means
+      // acc.completed >= 1 by construction. Defensive guard against
+      // future refactors.
+      /* v8 ignore next */
       successRate: acc.completed === 0 ? 0 : acc.succeeded / acc.completed,
       avgDurationSeconds:
         acc.durationCount === 0 ? 0 : acc.durationSecondsSum / acc.durationCount,
