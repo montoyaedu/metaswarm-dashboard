@@ -1,0 +1,5 @@
+{"id":"task-1","status":"open","agent":"coder"}
+this is not json
+{"id":"task-2","status":"closed","agent":"coder","closed_at":"2026-05-04T12:00:00Z","duration_seconds":600,"succeeded":true}
+{"missing-id":"row","status":"open"}
+{"id":"task-3","status":"closed","closed_at":"2026-05-03T11:00:00Z","duration_seconds":120,"succeeded":true}

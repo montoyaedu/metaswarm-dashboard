@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "projectName": "ethiclab-foo",
+  "generatedAt": "2026-05-06T12:00:00.000Z",
+  "dayKey": "2026-05-06",
+  "agents": [
+    {
+      "agent": "coder",
+      "tasksCompleted": 3,
+      "successRate": 1.0,
+      "avgDurationSeconds": 766.6666666666666
+    },
+    {
+      "agent": "reviewer-cto",
+      "tasksCompleted": 2,
+      "successRate": 0.5,
+      "avgDurationSeconds": 275
+    }
+  ],
+  "totals": {
+    "totalActiveTasks": 2,
+    "totalBlockedTasks": 1,
+    "totalCompletedTasksLast7d": 5,
+    "lastActivityAt": "2026-05-05T09:00:00.000Z"
+  },
+  "prsMergedLast7d": null
+}

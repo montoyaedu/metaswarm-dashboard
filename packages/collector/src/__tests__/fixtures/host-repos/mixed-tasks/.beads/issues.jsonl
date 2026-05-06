@@ -1,0 +1,8 @@
+{"id":"task-1","status":"open","agent":"coder","updated_at":"2026-05-05T08:00:00Z"}
+{"id":"task-2","status":"in_progress","agent":"coder","updated_at":"2026-05-05T09:00:00Z"}
+{"id":"task-3","status":"blocked","agent":"reviewer-cto","updated_at":"2026-05-04T15:00:00Z"}
+{"id":"task-4","status":"closed","agent":"coder","closed_at":"2026-05-04T12:00:00Z","duration_seconds":600,"succeeded":true}
+{"id":"task-5","status":"closed","agent":"coder","closed_at":"2026-05-03T14:00:00Z","duration_seconds":1200,"succeeded":true}
+{"id":"task-6","status":"closed","agent":"reviewer-cto","closed_at":"2026-05-02T10:00:00Z","duration_seconds":300,"succeeded":false}
+{"id":"task-7","status":"closed","agent":"reviewer-cto","closed_at":"2026-05-01T09:00:00Z","duration_seconds":250,"succeeded":true}
+{"id":"task-8","status":"closed","agent":"coder","closed_at":"2025-12-01T10:00:00Z","duration_seconds":500,"succeeded":true}
