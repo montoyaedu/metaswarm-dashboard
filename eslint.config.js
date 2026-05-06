@@ -15,7 +15,7 @@ export default tseslint.config(
       'docs/**',
       'bin/*.sh',
       'scripts/**', // metaswarm setup-time scripts; not in scope for issue #1
-      '*.config.{ts,js,mjs,cjs}', // root config files
+      '**/*.config.{ts,js,mjs,cjs}', // root + per-package config files
       'eslint.config.js',
     ],
   },
