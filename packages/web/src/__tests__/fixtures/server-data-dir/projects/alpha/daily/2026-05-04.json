@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "projectName": "alpha",
+  "generatedAt": "2026-05-04T12:00:00.000Z",
+  "dayKey": "2026-05-04",
+  "agents": [
+    {
+      "agent": "coder",
+      "tasksCompleted": 3,
+      "successRate": 1,
+      "avgDurationSeconds": 600
+    },
+    {
+      "agent": "reviewer-cto",
+      "tasksCompleted": 1,
+      "successRate": 0.5,
+      "avgDurationSeconds": 200
+    }
+  ],
+  "totals": {
+    "totalActiveTasks": 7,
+    "totalBlockedTasks": 2,
+    "totalCompletedTasksLast7d": 6,
+    "lastActivityAt": "2026-05-04T11:30:00.000Z"
+  },
+  "prsMergedLast7d": null
+}

@@ -1,4 +1,12 @@
-// SPA entry — populated in WU-5.
-// For WU-1, this file just exists so Vite has a valid entry; nothing renders
-// yet.
-export const WEB_PACKAGE_VERSION = '0.1.0';
+// SPA entry. Mounts Vue + naive-ui + vue-router.
+
+import { createApp } from 'vue';
+
+import App from './App.vue';
+import { createAppRouter } from './router.js';
+
+export { WEB_PACKAGE_VERSION } from './version.js';
+
+const app = createApp(App);
+app.use(createAppRouter());
+app.mount('#app');

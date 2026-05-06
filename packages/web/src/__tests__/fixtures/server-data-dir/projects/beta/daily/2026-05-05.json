@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "projectName": "beta",
+  "generatedAt": "2026-05-05T12:00:00.000Z",
+  "dayKey": "2026-05-05",
+  "agents": [
+    {
+      "agent": "coder",
+      "tasksCompleted": 1,
+      "successRate": 1,
+      "avgDurationSeconds": 300
+    }
+  ],
+  "totals": {
+    "totalActiveTasks": 1,
+    "totalBlockedTasks": 0,
+    "totalCompletedTasksLast7d": 1,
+    "lastActivityAt": "2026-05-05T09:00:00.000Z"
+  },
+  "prsMergedLast7d": null
+}

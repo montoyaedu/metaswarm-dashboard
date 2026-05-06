@@ -1,0 +1,31 @@
+<script setup lang="ts">
+import { NConfigProvider, darkTheme } from 'naive-ui';
+</script>
+
+<template>
+  <NConfigProvider :theme="darkTheme">
+    <RouterView />
+  </NConfigProvider>
+</template>
+
+<style>
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: #18181c;
+  color: rgba(255, 255, 255, 0.82);
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif;
+}
+</style>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { WEB_PACKAGE_VERSION } from '../main.js';
+import { WEB_PACKAGE_VERSION } from '../version.js';
 
 describe('@metaswarm-dashboard/web sanity', () => {
   it('exposes a package version constant', () => {
