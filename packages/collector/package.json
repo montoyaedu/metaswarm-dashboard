@@ -1,0 +1,42 @@
+{
+  "name": "@metaswarm-dashboard/collector",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./cli/collect": {
+      "types": "./dist/cli/collect.d.ts",
+      "import": "./dist/cli/collect.js"
+    },
+    "./cli/config-init": {
+      "types": "./dist/cli/config-init.d.ts",
+      "import": "./dist/cli/config-init.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@metaswarm-dashboard/types": "*",
+    "commander": "^12.1.0",
+    "js-yaml": "^4.1.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9"
+  }
+}

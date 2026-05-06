@@ -1,6 +1,3 @@
-# CI Pipeline — lint, typecheck, test, coverage
-# Scaffolded by metaswarm init. Customize for your project.
-
 name: CI
 
 on:
@@ -11,16 +8,22 @@ on:
 
 jobs:
   ci:
-    name: Lint, Test & Coverage
-    runs-on: ubuntu-latest
+    name: Lint, Typecheck, Test, Build (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Setup node from .nvmrc
+        uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version-file: .nvmrc
+          cache: npm
 
-      - name: Install dependencies
+      - name: Install
         run: npm ci
 
       - name: Lint
@@ -29,26 +32,34 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
-      - name: Test with coverage
+      - name: Test with coverage (global threshold gate runs at root)
+        run: npm run test:coverage
+
+      - name: Build all workspaces
+        run: npm run build
+
+      - name: Dispatcher smoke (top-level)
+        run: node ./bin/metaswarm-dashboard --help
+
+      - name: Dispatcher smoke — collect
+        run: node ./bin/metaswarm-dashboard collect --help
+
+      - name: Dispatcher smoke — serve
+        run: node ./bin/metaswarm-dashboard serve --help
+
+      - name: Dispatcher smoke — config init
+        run: node ./bin/metaswarm-dashboard config init --help
+
+  shellcheck:
+    name: ShellCheck bin/*.sh (ubuntu only)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run shellcheck
         run: |
-          if [ -f .coverage-thresholds.json ]; then
-            # Read command from coverage config
-            CMD=$(node -e "console.log(JSON.parse(require('fs').readFileSync('.coverage-thresholds.json','utf-8')).enforcement.command)")
-            echo "Running coverage command: $CMD"
-            # Split into array for safe execution
-            read -ra CMD_ARRAY <<< "$CMD"
-            # Validate first word is a known package manager/runner
-            case "${CMD_ARRAY[0]}" in
-              npm|pnpm|yarn|npx|bun|cargo|pytest|go|make) ;;
-              *) echo "Error: enforcement command must start with a known package manager/runner"; exit 1 ;;
-            esac
-            # Reject shell metacharacters in the full command string
-            if echo "$CMD" | grep -qE '[;|&`$(){}<>\\]'; then
-              echo "Error: enforcement command contains disallowed shell metacharacters"
-              exit 1
-            fi
-            # Execute as array — prevents all shell metacharacter interpretation
-            "${CMD_ARRAY[@]}"
+          if compgen -G "bin/*.sh" > /dev/null; then
+            sudo apt-get install -y shellcheck
+            shellcheck bin/*.sh
           else
-            npm test
+            echo "No bin/*.sh files found, skipping."
           fi

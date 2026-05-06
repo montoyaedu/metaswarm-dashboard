@@ -1,0 +1,7 @@
+node_modules/
+**/dist/
+**/coverage/
+**/*.snap
+.beads/
+package-lock.json
+docs/screenshots/

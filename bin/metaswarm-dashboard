@@ -1,0 +1,47 @@
+#!/usr/bin/env node
+// metaswarm-dashboard CLI — thin shebang glue (per plan §2.9).
+// Plain ESM JavaScript so node can execute it without a transpiler. All
+// testable logic lives in the per-workspace cli/ modules; this file just
+// wires commander to those modules. Excluded from coverage via
+// vitest.config.ts coverage.exclude.
+
+import { Command } from 'commander';
+
+const program = new Command();
+
+program
+  .name('metaswarm-dashboard')
+  .description('Read-only multi-project metaswarm dashboard')
+  .version('0.1.0');
+
+program
+  .command('collect')
+  .description('Read .beads/ from configured projects and write per-project snapshots')
+  .option('--project <name>', 'collect a single project from config.yaml')
+  .option('--all', 'collect every project in config.yaml')
+  .action(async (opts) => {
+    const { runCollect } = await import('@metaswarm-dashboard/collector/cli/collect');
+    await runCollect(opts);
+  });
+
+program
+  .command('serve')
+  .description('Start the local Fastify server on port 5174 (default) and serve the SPA')
+  .option('--port <port>', 'port number', '5174')
+  .action(async (opts) => {
+    const { runServe } = await import('@metaswarm-dashboard/server/cli/serve');
+    await runServe({ port: Number.parseInt(opts.port, 10) });
+  });
+
+const configCmd = program.command('config').description('Manage local config');
+
+configCmd
+  .command('init')
+  .description('Write a starter config.yaml at the XDG-aware location')
+  .option('--force', 'overwrite an existing config.yaml')
+  .action(async (opts) => {
+    const { runConfigInit } = await import('@metaswarm-dashboard/collector/cli/config-init');
+    await runConfigInit(opts);
+  });
+
+await program.parseAsync(process.argv);

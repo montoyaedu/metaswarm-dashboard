@@ -1,0 +1,40 @@
+{
+  "name": "metaswarm-dashboard",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Read-only multi-project dashboard for metaswarm-managed projects",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "prebuild": "npm run build -w packages/types",
+    "build": "npm run build --workspaces --if-present",
+    "pretypecheck": "npm run build -w packages/types",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "pretest": "npm run build -w packages/types",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint .",
+    "format:check": "prettier --check .",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@typescript-eslint/eslint-plugin": "^8.18.0",
+    "@typescript-eslint/parser": "^8.18.0",
+    "@vitest/coverage-v8": "^4.0.0",
+    "eslint": "^9.16.0",
+    "eslint-plugin-import": "^2.31.0",
+    "eslint-plugin-vue": "^9.32.0",
+    "globals": "^15.13.0",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.18.0",
+    "vitest": "^4.0.0",
+    "vue-eslint-parser": "^9.4.3"
+  }
+}
