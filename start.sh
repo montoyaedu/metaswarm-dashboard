@@ -5,23 +5,37 @@
 #   1. Verifies node 22.12+ is active (whatever version manager you use).
 #   2. Builds the workspaces (only if dist/ artifacts are missing).
 #   3. Resolves the XDG config path on your platform.
-#   4. Initializes config.yaml if missing (and offers project discovery).
+#   4. Initializes config.yaml if missing AND auto-runs project discovery
+#      on first start (default root: the repo's parent directory).
 #   5. Runs `collect --all`.
 #   6. Runs `serve` (long-running; Ctrl-C to stop).
+#
+# Discovery roots
+# ---------------
+# Discovery looks for `.beads/`-tracked projects under one or more parent
+# directories. Roots are resolved with this precedence:
+#   (a) CLI args after `--discover` (e.g. `--discover ~/code ~/work`)
+#   (b) Settings file at ${XDG_CONFIG_HOME:-~/.config}/metaswarm-dashboard/discover-roots.txt
+#       (one absolute path per line). Saved automatically the first time
+#       you confirm a root list interactively.
+#   (c) Fallback: the repo's parent directory (`dirname $REPO_ROOT`).
+#
+# If discovery finds nothing, you're prompted for parent dirs to scan and
+# the answer is saved into discover-roots.txt for next time.
 #
 # Idempotent by default: an existing config is kept untouched, dist/ is
 # only rebuilt if missing, and `collect --all` overwrites only today's
 # UTC daily snapshot (per the writer's atomic-rename design).
 #
 # Flags:
-#   --discover [<root>...]   Run bin/discover-projects.sh against the given
-#                            roots (or ~ by default), append result to
-#                            config.yaml after a review prompt. Use this
-#                            when you've added a new project under a parent
-#                            you've already scanned.
+#   --discover [<root>...]   Force discovery now (even if config.yaml exists).
+#                            Roots come from the args; if none given, falls
+#                            back to (b) then (c) above.
 #   --reinit                 Wipe config.yaml + re-run config init. Use
 #                            this if your YAML got corrupted or you want
 #                            a fresh starter file.
+#   --reset-discover-roots   Wipe the saved discover-roots.txt and re-prompt
+#                            on the next discovery.
 #   --no-collect             Skip step 5; go straight to serve.
 #   --no-serve               Skip step 6; collect only (cron-friendly).
 #   --port <n>               Port for serve (default 5174).
@@ -38,8 +52,9 @@ set -euo pipefail
 # Resolve the repo root from the script's own location, not from cwd.
 # Doesn't change the caller's shell directory.
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_PARENT="$(dirname "$REPO_ROOT")"
 
-# Run a node command from inside the repo without polluting the caller's cwd.
+# Run a command from inside the repo without polluting the caller's cwd.
 in_repo() {
   ( cd "$REPO_ROOT" && "$@" )
 }
@@ -49,6 +64,7 @@ in_repo() {
 # -----------------------------------------------------------------------------
 DO_DISCOVER=0
 DO_REINIT=0
+RESET_DISCOVER_ROOTS=0
 DO_COLLECT=1
 DO_SERVE=1
 PORT=5174
@@ -66,12 +82,13 @@ while [ "$#" -gt 0 ]; do
         DISCOVER_ROOTS+=("$1"); shift
       done
       ;;
-    --reinit)        DO_REINIT=1; shift ;;
-    --no-collect)    DO_COLLECT=0; shift ;;
-    --no-serve)      DO_SERVE=0; shift ;;
-    --port)          PORT="$2"; shift 2 ;;
-    -h|--help)       sed -n '2,/^set -euo/p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
-    *)               echo "Unknown flag: $1" >&2; exit 2 ;;
+    --reinit)               DO_REINIT=1; shift ;;
+    --reset-discover-roots) RESET_DISCOVER_ROOTS=1; shift ;;
+    --no-collect)           DO_COLLECT=0; shift ;;
+    --no-serve)             DO_SERVE=0; shift ;;
+    --port)                 PORT="$2"; shift 2 ;;
+    -h|--help)              sed -n '2,/^set -euo/p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    *)                      echo "Unknown flag: $1" >&2; exit 2 ;;
   esac
 done
 
@@ -113,7 +130,7 @@ else
 fi
 
 # -----------------------------------------------------------------------------
-# 3. Config path resolution
+# 3. Config + settings paths
 # -----------------------------------------------------------------------------
 if [ -n "${METASWARM_DASHBOARD_CONFIG:-}" ]; then
   CFG="$METASWARM_DASHBOARD_CONFIG"
@@ -122,7 +139,88 @@ elif [ "$(uname)" = "Darwin" ]; then
 else
   CFG="${XDG_CONFIG_HOME:-$HOME/.config}/metaswarm-dashboard/config.yaml"
 fi
+
+# discover-roots.txt — operator-level (NOT per-project) settings file.
+# Always under XDG_CONFIG_HOME, never inside the data dir, so it survives
+# `rm -rf <data dir>` cleanups and is portable across shells.
+DISCOVER_SETTINGS="${XDG_CONFIG_HOME:-$HOME/.config}/metaswarm-dashboard/discover-roots.txt"
+
 printf '✓ config path: %s\n' "$CFG"
+
+if [ "$RESET_DISCOVER_ROOTS" -eq 1 ] && [ -f "$DISCOVER_SETTINGS" ]; then
+  rm -f "$DISCOVER_SETTINGS"
+  echo "→ wiped saved discover roots ($DISCOVER_SETTINGS)"
+fi
+
+# -----------------------------------------------------------------------------
+# Discovery helpers
+# -----------------------------------------------------------------------------
+expand_path() {
+  # Expand a leading ~ to $HOME.
+  case "$1" in
+    "~") echo "$HOME" ;;
+    "~/"*) echo "$HOME/${1#~/}" ;;
+    *) echo "$1" ;;
+  esac
+}
+
+resolve_discover_roots() {
+  # Populates a global RESOLVED_ROOTS array (paths) using precedence:
+  #   1. DISCOVER_ROOTS (CLI args, already populated)
+  #   2. $DISCOVER_SETTINGS file (one path per line, # comments allowed)
+  #   3. $REPO_PARENT
+  RESOLVED_ROOTS=()
+  if [ "${#DISCOVER_ROOTS[@]}" -gt 0 ]; then
+    for r in "${DISCOVER_ROOTS[@]}"; do
+      RESOLVED_ROOTS+=("$(expand_path "$r")")
+    done
+    return
+  fi
+  if [ -f "$DISCOVER_SETTINGS" ]; then
+    while IFS= read -r line; do
+      # strip whitespace + skip blanks/comments
+      line="$(printf '%s' "$line" | sed -e 's/[[:space:]]*$//' -e 's/^[[:space:]]*//')"
+      [ -z "$line" ] && continue
+      [ "${line#'#'}" != "$line" ] && continue
+      RESOLVED_ROOTS+=("$(expand_path "$line")")
+    done < "$DISCOVER_SETTINGS"
+    if [ "${#RESOLVED_ROOTS[@]}" -gt 0 ]; then return; fi
+  fi
+  RESOLVED_ROOTS=("$REPO_PARENT")
+}
+
+prompt_and_save_roots() {
+  # Reads parent dirs from stdin (one per line, blank to finish). Saves
+  # them to $DISCOVER_SETTINGS. Sets RESOLVED_ROOTS to the saved list.
+  RESOLVED_ROOTS=()
+  echo
+  echo "Which parent directories should I scan for .beads/-tracked projects?"
+  echo "Enter one absolute path per line. Blank line when done."
+  while true; do
+    printf '  > '
+    if ! IFS= read -r line; then break; fi
+    [ -z "$line" ] && break
+    line="$(expand_path "$line")"
+    if [ -d "$line" ]; then
+      RESOLVED_ROOTS+=("$line")
+    else
+      printf '    (skip — not a directory: %s)\n' "$line"
+    fi
+  done
+
+  if [ "${#RESOLVED_ROOTS[@]}" -eq 0 ]; then
+    echo "→ no roots provided; nothing saved."
+    return 1
+  fi
+
+  mkdir -p "$(dirname "$DISCOVER_SETTINGS")"
+  {
+    echo "# metaswarm-dashboard discover-roots — $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    echo "# One absolute parent directory per line. Used by ./start.sh."
+    printf '%s\n' "${RESOLVED_ROOTS[@]}"
+  } > "$DISCOVER_SETTINGS"
+  echo "✓ saved $DISCOVER_SETTINGS"
+}
 
 # -----------------------------------------------------------------------------
 # 4. Reinit / Init / Discover
@@ -135,40 +233,63 @@ if [ "$DO_REINIT" -eq 1 ]; then
   fi
 fi
 
+CONFIG_FRESHLY_CREATED=0
 if [ ! -f "$CFG" ]; then
   echo "→ no config.yaml; running config init…"
   in_repo node ./bin/metaswarm-dashboard config init
-  printf '\n  Starter config written to: %s\n' "$CFG"
-  printf '  It currently has no projects. You can either:\n'
-  printf '    a) Re-run with `--discover ~/your/code/root` to auto-detect candidates.\n'
-  printf '    b) Edit the file manually now and rerun this script.\n\n'
+  CONFIG_FRESHLY_CREATED=1
 fi
 
-if [ "$DO_DISCOVER" -eq 1 ]; then
-  if [ "${#DISCOVER_ROOTS[@]}" -eq 0 ]; then
-    DISCOVER_ROOTS=("$HOME")
-    echo "→ no --discover roots given; defaulting to \$HOME"
-  fi
+# Auto-trigger discovery on first run (or when explicitly requested).
+if [ "$DO_DISCOVER" -eq 1 ] || [ "$CONFIG_FRESHLY_CREATED" -eq 1 ]; then
+  resolve_discover_roots
   TMP_YAML="$(mktemp -t metaswarm-discover.XXXXXX)"
   trap 'rm -f "$TMP_YAML"' EXIT
-  echo "→ discovering .beads/-tracked projects under: ${DISCOVER_ROOTS[*]}"
-  in_repo ./bin/discover-projects.sh "${DISCOVER_ROOTS[@]}" > "$TMP_YAML"
-  echo "─────────────────────────────────────────────"
-  cat "$TMP_YAML"
-  echo "─────────────────────────────────────────────"
-  printf '\nReview the YAML above. Do you want to APPEND it to %s? [y/N] ' "$CFG"
-  read -r reply
-  case "$reply" in
-    [yY]|[yY][eE][sS])
-      mkdir -p "$(dirname "$CFG")"
-      printf '\n# discovered %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$CFG"
-      tail -n +4 "$TMP_YAML" | grep -v '^projects:' >> "$CFG"
-      echo "✓ appended to $CFG"
-      ;;
-    *)
-      echo "→ skipped append; you can edit $CFG manually"
-      ;;
-  esac
+
+  echo "→ scanning for .beads/-tracked projects under: ${RESOLVED_ROOTS[*]}"
+  in_repo ./bin/discover-projects.sh "${RESOLVED_ROOTS[@]}" > "$TMP_YAML"
+
+  # Detect "no projects found" — discover-projects.sh emits "  []" in that case.
+  if grep -qE '^[[:space:]]*\[\]$' "$TMP_YAML"; then
+    echo "→ no projects found under those roots."
+    if prompt_and_save_roots; then
+      echo "→ rescanning with the new roots…"
+      in_repo ./bin/discover-projects.sh "${RESOLVED_ROOTS[@]}" > "$TMP_YAML"
+    fi
+  fi
+
+  # Show + prompt append (only if there's actual content to append).
+  if grep -q '^  - name:' "$TMP_YAML"; then
+    echo "─────────────────────────────────────────────"
+    cat "$TMP_YAML"
+    echo "─────────────────────────────────────────────"
+    printf '\nAppend the discovered projects to %s? [y/N] ' "$CFG"
+    read -r reply
+    case "$reply" in
+      [yY]|[yY][eE][sS])
+        mkdir -p "$(dirname "$CFG")"
+        printf '\n# discovered %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$CFG"
+        # Skip the YAML preamble (header + `projects:` line) and append only entries.
+        grep -E '^[[:space:]]+- name:|^[[:space:]]{4,}path:' "$TMP_YAML" >> "$CFG"
+        echo "✓ appended to $CFG"
+
+        # If we just resolved roots interactively (no prior settings file)
+        # AND the resolution wasn't from CLI args, persist them.
+        if [ ! -f "$DISCOVER_SETTINGS" ] && [ "${#DISCOVER_ROOTS[@]}" -eq 0 ]; then
+          mkdir -p "$(dirname "$DISCOVER_SETTINGS")"
+          {
+            echo "# metaswarm-dashboard discover-roots — $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "# Auto-saved on first successful discovery."
+            printf '%s\n' "${RESOLVED_ROOTS[@]}"
+          } > "$DISCOVER_SETTINGS"
+          echo "✓ remembered scan roots in $DISCOVER_SETTINGS"
+        fi
+        ;;
+      *)
+        echo "→ skipped append; you can edit $CFG manually"
+        ;;
+    esac
+  fi
 fi
 
 # -----------------------------------------------------------------------------
