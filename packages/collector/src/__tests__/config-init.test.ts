@@ -32,7 +32,10 @@ describe('runConfigInit', () => {
 
     const content = readFileSync(result.path, 'utf8');
     expect(content).toContain('# metaswarm-dashboard config');
-    expect(content).toContain('projects: []');
+    // Open `projects:` (not `projects: []`) so manual or scripted appends
+    // land inside the list rather than at the YAML root.
+    expect(content).toMatch(/^projects:\s*$/m);
+    expect(content).not.toContain('projects: []');
     expect(content).toContain('Example (uncomment + edit):');
   });
 

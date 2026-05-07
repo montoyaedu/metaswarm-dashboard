@@ -268,6 +268,16 @@ if [ "$DO_DISCOVER" -eq 1 ] || [ "$CONFIG_FRESHLY_CREATED" -eq 1 ]; then
     case "$reply" in
       [yY]|[yY][eE][sS])
         mkdir -p "$(dirname "$CFG")"
+        # The starter `config init` writes `projects: []` (empty array,
+        # closed). If we naively append `- name:` items after that, they
+        # become orphaned at the YAML root and the loader silently keeps
+        # `projects: []`. Convert the closed empty array to an open list
+        # before appending. Idempotent — no-op if already opened.
+        if grep -qE '^projects: \[\][[:space:]]*$' "$CFG"; then
+          # macOS sed needs the empty -i argument; --posix-portable variant.
+          sed -i.bak 's/^projects: \[\][[:space:]]*$/projects:/' "$CFG"
+          rm -f "$CFG.bak"
+        fi
         printf '\n# discovered %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$CFG"
         # Skip the YAML preamble (header + `projects:` line) and append only entries.
         grep -E '^[[:space:]]+- name:|^[[:space:]]{4,}path:' "$TMP_YAML" >> "$CFG"

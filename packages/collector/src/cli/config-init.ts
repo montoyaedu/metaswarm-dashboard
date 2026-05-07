@@ -55,6 +55,14 @@ export function buildConfigInitHelpText(env: PathsEnv = defaultEnv()): string {
   ].join('\n');
 }
 
+// IMPORTANT: the starter uses `projects:` (open list) rather than
+// `projects: []` (closed empty array). With `[]` the array is "closed" in
+// YAML and any items added below at indented `- name: …` would actually
+// land at the document root, NOT inside `projects:` — silently parsed as
+// `projects: []` again. Keeping `projects:` open lets a manual editor (or
+// `start.sh`'s discovery append) add items directly without touching this
+// line. The loader (config.ts) treats a missing/null projects key as
+// `[]` via Zod's `.default([])`.
 const STARTER_YAML = `# metaswarm-dashboard config
 #
 # Each entry under \`projects\` declares a metaswarm-managed project to
@@ -70,7 +78,7 @@ const STARTER_YAML = `# metaswarm-dashboard config
 #   - name: bar
 #     path: /Users/you/work/bar
 
-projects: []
+projects:
 `;
 
 export function runConfigInit(opts: ConfigInitOptions = {}): ConfigInitResult {
