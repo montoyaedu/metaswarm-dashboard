@@ -195,6 +195,20 @@ Development patterns and standards are documented in `guides/`:
 - ESLint + Prettier
 - All quality gates must pass before PR creation
 
+## Approved tech stack (single source of truth: [STACK.md](STACK.md))
+
+**Before introducing a new dependency or upgrading a major version**, read `STACK.md`. It enumerates:
+
+- Approved tools with version pins (Node 22.12+, TypeScript 5.7+, Vue 3.5+, Fastify 5+, Vitest 4+, ESLint 9 flat-config, etc.)
+- Approved package manager: **npm** (not yarn or pnpm)
+- Approved node version manager: any that reads `.nvmrc` (nvm/fnm/volta/n)
+- Excluded tools and the reason for exclusion (Pinia, Tailwind, vue-router 5, gh integration in MVP, etc.)
+- The "how to extend" rules for Step 2 / Step 3
+
+Agents must NOT silently introduce a tool not in `STACK.md`. If you have a strong reason, propose the addition first by adding a row to the "Excluded / rejected" table with the rationale, OR record an architecture decision in `.beads/knowledge/decisions.jsonl` using `bd decision`.
+
+This is a tool-agnostic local context hub — no dependency on a hosted "context hub" platform. Cursor, Continue, Claude Code, Codex CLI, Aider all see the same constraints because they all see the markdown.
+
 ## Key Decisions
 
 <!-- Document important architectural decisions here so agents have context.

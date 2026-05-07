@@ -34,7 +34,7 @@ host project C/.beads/  ─┘                                          │
 
 ## Prerequisites
 
-- **Node 22.12.0+** (pinned via `.nvmrc`; required by Vite 8 / Vitest 4). On a fresh machine: `nvm install 22.12.0 && nvm use 22.12.0` (or the equivalent in fnm/volta/`n`).
+- **Node 22.12.0+** (pinned via `.nvmrc`; required by Vite 8 / Vitest 4). The repo uses `.nvmrc` which is read by every major version manager: `nvm use`, `fnm use`, `volta install node@22.12.0`, or `sudo n auto` all work. Pick whichever you have.
 - **`bd` CLI** (the [BEADS](https://github.com/steveyegge/beads) issue tracker that metaswarm uses). The collector runs `bd list --json` against each configured project. Install per the upstream BEADS docs.
 - **Dolt SQL server** for BEADS `--server` mode (only required if your `bd` binary was compiled without CGO — common on macOS Apple Silicon). Run `brew install dolt` (or equivalent), then `dolt sql-server -H 127.0.0.1 -P 3307` in a background terminal/launchd entry. `bd init --server` then connects to it. See the [BEADS server-mode docs](https://github.com/steveyegge/beads) for details.
 - **Optional**: a real GitHub authentication via `gh auth login` is *not* required by the MVP — `prsMergedLast7d` is hard-coded `null` in this release (see [Why is PRs-merged showing —?](#why-is-prs-merged-showing-)).
@@ -44,12 +44,23 @@ host project C/.beads/  ─┘                                          │
 ```bash
 git clone git@github.com:montoyaedu/metaswarm-dashboard.git
 cd metaswarm-dashboard
-nvm use            # picks up .nvmrc (22.12.0)
+nvm use            # picks up .nvmrc (22.12.0). Or: `n auto`, `fnm use`, `volta install node@22.12.0`
 npm ci             # installs all four workspace packages
 npm run build      # builds packages/types, collector, server, web
 ```
 
 `npm run build` emits compiled JS under each workspace's `dist/`. The `bin/metaswarm-dashboard` ESM dispatcher imports those compiled subpaths.
+
+## Discovering existing `.beads/`-tracked projects
+
+The MVP doesn't auto-discover projects (`config.yaml` is explicit by design — see [STACK.md](STACK.md) for the rationale). To find candidates under a parent dir, use the bundled helper:
+
+```bash
+./bin/discover-projects.sh ~/code ~/ethiclab
+# Prints YAML you can paste into ~/.config/metaswarm-dashboard/config.yaml
+```
+
+A future `metaswarm-dashboard config discover` subcommand will integrate this — see [issue #5](https://github.com/montoyaedu/metaswarm-dashboard/issues/5).
 
 ## Quick start
 
