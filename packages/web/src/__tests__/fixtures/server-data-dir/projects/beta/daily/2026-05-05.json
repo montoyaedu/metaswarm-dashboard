@@ -1,6 +1,8 @@
 {
   "schemaVersion": 1,
   "projectName": "beta",
+  "projectPath": "/Users/op/work/beta",
+  "category": "metaswarm",
   "generatedAt": "2026-05-05T12:00:00.000Z",
   "dayKey": "2026-05-05",
   "agents": [

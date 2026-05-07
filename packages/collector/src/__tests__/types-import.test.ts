@@ -15,6 +15,8 @@ describe('cross-package import @metaswarm-dashboard/types', () => {
       blockedTasks: 0,
       prsMergedLast7d: null,
       lastActivityAt: null,
+      path: '/tmp/p',
+      category: 'metaswarm',
       hasMetrics: false,
       collectionStatus: 'ok',
       collectionWarnings: [],    };

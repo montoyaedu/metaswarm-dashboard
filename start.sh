@@ -36,6 +36,10 @@
 #                            a fresh starter file.
 #   --reset-discover-roots   Wipe the saved discover-roots.txt and re-prompt
 #                            on the next discovery.
+#   --include-git-only       Pass --include-git-only to discovery so vanilla
+#                            git repos (no .beads/) are surfaced as
+#                            placeholder cards on the dashboard with a
+#                            "not yet managed" badge.
 #   --no-collect             Skip step 5; go straight to serve.
 #   --no-serve               Skip step 6; collect only (cron-friendly).
 #   --port <n>               Port for serve (default 5174).
@@ -69,6 +73,7 @@ DO_COLLECT=1
 DO_SERVE=1
 PORT=5174
 DISCOVER_ROOTS=()
+INCLUDE_GIT_ONLY=0
 
 # -----------------------------------------------------------------------------
 # Args
@@ -84,6 +89,7 @@ while [ "$#" -gt 0 ]; do
       ;;
     --reinit)               DO_REINIT=1; shift ;;
     --reset-discover-roots) RESET_DISCOVER_ROOTS=1; shift ;;
+    --include-git-only)     INCLUDE_GIT_ONLY=1; shift ;;
     --no-collect)           DO_COLLECT=0; shift ;;
     --no-serve)             DO_SERVE=0; shift ;;
     --port)                 PORT="$2"; shift 2 ;;
@@ -247,14 +253,22 @@ if [ "$DO_DISCOVER" -eq 1 ] || [ "$CONFIG_FRESHLY_CREATED" -eq 1 ]; then
   trap 'rm -f "$TMP_YAML"' EXIT
 
   echo "→ scanning for .beads/-tracked projects under: ${RESOLVED_ROOTS[*]}"
-  in_repo ./bin/discover-projects.sh "${RESOLVED_ROOTS[@]}" > "$TMP_YAML"
+  if [ "$INCLUDE_GIT_ONLY" -eq 1 ]; then
+    in_repo ./bin/discover-projects.sh --include-git-only "${RESOLVED_ROOTS[@]}" > "$TMP_YAML"
+  else
+    in_repo ./bin/discover-projects.sh "${RESOLVED_ROOTS[@]}" > "$TMP_YAML"
+  fi
 
   # Detect "no projects found" — discover-projects.sh emits "  []" in that case.
   if grep -qE '^[[:space:]]*\[\]$' "$TMP_YAML"; then
     echo "→ no projects found under those roots."
     if prompt_and_save_roots; then
       echo "→ rescanning with the new roots…"
-      in_repo ./bin/discover-projects.sh "${RESOLVED_ROOTS[@]}" > "$TMP_YAML"
+      if [ "$INCLUDE_GIT_ONLY" -eq 1 ]; then
+    in_repo ./bin/discover-projects.sh --include-git-only "${RESOLVED_ROOTS[@]}" > "$TMP_YAML"
+  else
+    in_repo ./bin/discover-projects.sh "${RESOLVED_ROOTS[@]}" > "$TMP_YAML"
+  fi
     fi
   fi
 
@@ -280,7 +294,7 @@ if [ "$DO_DISCOVER" -eq 1 ] || [ "$CONFIG_FRESHLY_CREATED" -eq 1 ]; then
         fi
         printf '\n# discovered %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$CFG"
         # Skip the YAML preamble (header + `projects:` line) and append only entries.
-        grep -E '^[[:space:]]+- name:|^[[:space:]]{4,}path:' "$TMP_YAML" >> "$CFG"
+        grep -E '^[[:space:]]+- name:|^[[:space:]]{4,}(path|category):' "$TMP_YAML" >> "$CFG"
         echo "✓ appended to $CFG"
 
         # If we just resolved roots interactively (no prior settings file)

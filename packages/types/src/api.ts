@@ -4,8 +4,20 @@
 /** Status of the most recent `collect` run for this project. */
 export type CollectionStatus = 'ok' | 'degraded' | 'failed';
 
+/**
+ * Whether the project is metaswarm-managed (has `.beads/`) or just a
+ * vanilla git repo we surfaced for visibility. `git-only` projects are
+ * rendered with a "not yet managed" badge and zero metrics — they're
+ * placeholders that nudge the operator to either onboard them to
+ * metaswarm or remove them from `config.yaml`.
+ */
+export type ProjectCategory = 'metaswarm' | 'git-only';
+
 export interface ProjectSummary {
   name: string;
+  /** Absolute filesystem path of the project root. Used for grouping by parent dir. */
+  path: string;
+  category: ProjectCategory;
   activeTasks: number;
   blockedTasks: number;
   prsMergedLast7d: number | null; // ALWAYS null in MVP (plan §2.6)
@@ -14,9 +26,10 @@ export interface ProjectSummary {
   /**
    * Status of the most recent collection. `ok` means no warnings were
    * raised. `degraded` means the collector got SOME data but logged
-   * warnings (e.g. `bd list --json` failed but `.beads/issues.jsonl` was
-   * still readable). `failed` means the project was skipped entirely
-   * (no `.beads/`, missing path, etc.).
+   * warnings. `failed` means the project was skipped entirely.
+   *
+   * For `git-only` projects, status is always `ok` and warnings is empty
+   * — the placeholder card is the operator-facing signal, not a warning.
    */
   collectionStatus: CollectionStatus;
   /** Operator-readable warnings from the most recent collection. */

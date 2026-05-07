@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "projectName": "lib-utils",
+  "projectPath": "/Users/op/code/lib-utils",
+  "category": "git-only",
+  "generatedAt": "2026-05-06T12:00:00.000Z",
+  "dayKey": "2026-05-06",
+  "agents": [],
+  "totals": {
+    "totalActiveTasks": 0,
+    "totalBlockedTasks": 0,
+    "totalCompletedTasksLast7d": 0,
+    "lastActivityAt": null
+  },
+  "prsMergedLast7d": null,
+  "collectionStatus": "ok",
+  "collectionWarnings": []
+}

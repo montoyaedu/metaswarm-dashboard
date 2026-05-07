@@ -4,14 +4,27 @@ import { computed } from 'vue';
 import EmptyState from '../components/EmptyState.vue';
 import ProjectCard from '../components/ProjectCard.vue';
 import { useProjects } from '../composables/useProjects.js';
+import { groupByParent } from '../lib/group-by-parent.js';
 
 const { projects, loading, error } = useProjects();
 
-const visibleProjects = computed(() => projects.value);
+const groups = computed(() => groupByParent(projects.value));
 const allEmpty = computed(
-  () => !loading.value && projects.value.length > 0 && projects.value.every((p) => !p.hasMetrics),
+  () =>
+    !loading.value &&
+    projects.value.length > 0 &&
+    projects.value.every((p) => !p.hasMetrics && p.category !== 'git-only'),
 );
 const noProjects = computed(() => !loading.value && projects.value.length === 0);
+
+function statusSummary(g: ReturnType<typeof groupByParent>[number]): string {
+  const parts: string[] = [];
+  if (g.counts.metaswarm > 0) parts.push(`${g.counts.metaswarm} metaswarm`);
+  if (g.counts.gitOnly > 0) parts.push(`${g.counts.gitOnly} git-only`);
+  if (g.counts.degraded > 0) parts.push(`${g.counts.degraded} degraded`);
+  if (g.counts.failed > 0) parts.push(`${g.counts.failed} failed`);
+  return parts.join(' · ');
+}
 </script>
 
 <template>
@@ -35,15 +48,31 @@ const noProjects = computed(() => !loading.value && projects.value.length === 0)
       data-testid="empty-no-metrics"
     />
 
-    <div v-else class="grid">
-      <ProjectCard v-for="p in visibleProjects" :key="p.name" :project="p" />
+    <div v-else class="groups">
+      <section
+        v-for="g in groups"
+        :key="g.parentPath"
+        class="parent-group"
+        :data-testid="`group-${g.parentPath || 'root'}`"
+      >
+        <header class="group-header">
+          <h2 class="group-label">{{ g.label }}</h2>
+          <span class="group-path">{{ g.parentPath || '(no parent)' }}</span>
+          <span class="group-summary" :data-testid="`group-summary-${g.parentPath || 'root'}`">
+            {{ g.counts.total }} total · {{ statusSummary(g) }}
+          </span>
+        </header>
+        <div class="grid">
+          <ProjectCard v-for="p in g.projects" :key="p.name" :project="p" />
+        </div>
+      </section>
     </div>
   </main>
 </template>
 
 <style scoped>
 .projects-index {
-  max-width: 960px;
+  max-width: 1100px;
   margin: 0 auto;
   padding: 2rem 1rem;
 }
@@ -51,6 +80,40 @@ const noProjects = computed(() => !loading.value && projects.value.length === 0)
 header h1 {
   margin: 0 0 1.5rem 0;
   font-size: 1.5rem;
+}
+
+.groups {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.parent-group .group-header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin: 0 0 0.75rem 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.group-label {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.group-path {
+  font-family: ui-monospace, Menlo, Monaco, monospace;
+  font-size: 0.75rem;
+  opacity: 0.5;
+}
+
+.group-summary {
+  margin-left: auto;
+  font-size: 0.75rem;
+  opacity: 0.7;
 }
 
 .grid {

@@ -30,13 +30,25 @@ describe('loadConfig', () => {
   it('parses a project entry and expands ~', () => {
     const yaml = `projects:\n  - name: foo\n    path: ~/code/foo\n`;
     const cfg = loadConfig('/cfg.yaml', { env: env(), read: loaderWith(yaml) });
-    expect(cfg.projects).toEqual([{ name: 'foo', path: '/home/test/code/foo' }]);
+    expect(cfg.projects).toEqual([
+      { name: 'foo', path: '/home/test/code/foo', category: 'metaswarm' },
+    ]);
   });
 
   it('preserves absolute paths unchanged', () => {
     const yaml = `projects:\n  - name: bar\n    path: /opt/bar\n`;
     const cfg = loadConfig('/cfg.yaml', { env: env(), read: loaderWith(yaml) });
-    expect(cfg.projects).toEqual([{ name: 'bar', path: '/opt/bar' }]);
+    expect(cfg.projects).toEqual([
+      { name: 'bar', path: '/opt/bar', category: 'metaswarm' },
+    ]);
+  });
+
+  it('honors explicit category: git-only on a project entry', () => {
+    const yaml = `projects:\n  - name: vanilla\n    path: /opt/vanilla\n    category: git-only\n`;
+    const cfg = loadConfig('/cfg.yaml', { env: env(), read: loaderWith(yaml) });
+    expect(cfg.projects).toEqual([
+      { name: 'vanilla', path: '/opt/vanilla', category: 'git-only' },
+    ]);
   });
 
   it('rejects relative project paths', () => {

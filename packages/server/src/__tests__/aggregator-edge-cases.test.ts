@@ -9,7 +9,8 @@ function snap(agents: DailySnapshot['agents'], dayKey = '2026-05-06'): DailySnap
   return {
     schemaVersion: 1,
     projectName: 'p',
-    generatedAt: `${dayKey}T00:00:00.000Z`,
+    projectPath: '/tmp/p',
+    category: 'metaswarm',    generatedAt: `${dayKey}T00:00:00.000Z`,
     dayKey,
     agents,
     totals: {

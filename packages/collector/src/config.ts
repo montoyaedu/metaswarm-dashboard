@@ -15,6 +15,12 @@ import { z } from 'zod';
 export const ProjectEntry = z.object({
   name: z.string().min(1, 'project name must be a non-empty string'),
   path: z.string().min(1, 'project path must be a non-empty string'),
+  /**
+   * Whether the project has `.beads/` (metaswarm-managed) or is just
+   * a vanilla git repo surfaced for visibility. Defaults to `metaswarm`
+   * for backwards-compat with configs written before this field landed.
+   */
+  category: z.enum(['metaswarm', 'git-only']).default('metaswarm'),
 });
 export type ProjectEntry = z.infer<typeof ProjectEntry>;
 
@@ -88,7 +94,7 @@ export function loadConfig(path: string, opts: LoadConfigOptions = {}): Config {
         `Project '${p.name}' has a relative path '${p.path}'. Project paths must be absolute (or start with '~').`,
       );
     }
-    return { name: p.name, path: resolved };
+    return { name: p.name, path: resolved, category: p.category };
   });
 
   return { projects: expanded };

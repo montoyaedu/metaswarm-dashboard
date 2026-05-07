@@ -151,6 +151,37 @@ export async function runCollect(opts: RunCollectOptions = {}): Promise<RunColle
   }
 
   for (const project of projects) {
+    // git-only projects are placeholders: we don't read .beads/, we just
+    // emit a snapshot that says "this exists, not metaswarm-managed."
+    if (project.category === 'git-only') {
+      stdout(`[git-only] ${project.name}: not metaswarm-managed (placeholder card)`);
+      result.projectsProcessed.push(project.name);
+      const placeholder: DailySnapshot = {
+        schemaVersion: 1,
+        projectName: project.name,
+        projectPath: project.path,
+        category: 'git-only',
+        generatedAt: now.toISOString(),
+        dayKey,
+        agents: [],
+        totals: {
+          totalActiveTasks: 0,
+          totalBlockedTasks: 0,
+          totalCompletedTasksLast7d: 0,
+          lastActivityAt: null,
+        },
+        prsMergedLast7d: null,
+        collectionStatus: 'ok',
+        collectionWarnings: [],
+      };
+      atomicWriteJson(
+        dailySnapshotPath(dataPath, project.name, dayKey),
+        JSON.stringify(placeholder, null, 2),
+        opts.writerFs,
+      );
+      continue;
+    }
+
     const read = await readHostBeads(project.path, {
       ...(opts.execute ? { execute: opts.execute } : {}),
       ...(opts.readerFs ? { fs: opts.readerFs } : {}),
@@ -163,6 +194,8 @@ export async function runCollect(opts: RunCollectOptions = {}): Promise<RunColle
       const failedDaily: DailySnapshot = {
         schemaVersion: 1,
         projectName: project.name,
+        projectPath: project.path,
+        category: 'metaswarm',
         generatedAt: now.toISOString(),
         dayKey,
         agents: [],
@@ -194,6 +227,8 @@ export async function runCollect(opts: RunCollectOptions = {}): Promise<RunColle
     const daily: DailySnapshot = {
       schemaVersion: 1,
       projectName: project.name,
+      projectPath: project.path,
+      category: 'metaswarm',
       generatedAt: now.toISOString(),
       dayKey,
       agents,
@@ -219,6 +254,8 @@ export async function runCollect(opts: RunCollectOptions = {}): Promise<RunColle
       const weekly: WeeklySnapshot = {
         schemaVersion: 1,
         projectName: project.name,
+        projectPath: project.path,
+        category: 'metaswarm',
         generatedAt: now.toISOString(),
         isoWeek: priorWeek,
         agents,

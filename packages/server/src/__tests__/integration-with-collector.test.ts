@@ -36,7 +36,8 @@ describe('collector writer ↔ server reader contract', () => {
     const snapshot: DailySnapshot = {
       schemaVersion: 1,
       projectName: 'foo',
-      generatedAt: `${dayKey}T12:00:00.000Z`,
+    projectPath: '/tmp/p',
+    category: 'metaswarm',      generatedAt: `${dayKey}T12:00:00.000Z`,
       dayKey,
       agents: [
         { agent: 'coder', tasksCompleted: 1, successRate: 1.0, avgDurationSeconds: 100 },

@@ -17,7 +17,8 @@ function snap(dayKey: string, completed7d = 5, agents: DailySnapshot['agents'] =
   return {
     schemaVersion: 1,
     projectName: 'p',
-    generatedAt: `${dayKey}T00:00:00.000Z`,
+    projectPath: '/tmp/p',
+    category: 'metaswarm',    generatedAt: `${dayKey}T00:00:00.000Z`,
     dayKey,
     agents,
     totals: {
@@ -37,6 +38,8 @@ describe('toProjectSummary', () => {
     const s = toProjectSummary('p', null);
     expect(s).toEqual({
       name: 'p',
+      path: '',
+      category: 'metaswarm',
       activeTasks: 0,
       blockedTasks: 0,
       prsMergedLast7d: null,

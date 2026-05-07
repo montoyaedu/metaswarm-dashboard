@@ -25,6 +25,8 @@ const SAMPLE: ProjectSummary = {
   blockedTasks: 0,
   prsMergedLast7d: null,
   lastActivityAt: null,
+  path: '/tmp/p',
+  category: 'metaswarm',
   hasMetrics: true,
       collectionStatus: 'ok',
       collectionWarnings: [],};
@@ -63,6 +65,8 @@ describe('ProjectCard relative-time formatter branches', () => {
       blockedTasks: 0,
       prsMergedLast7d: null,
       lastActivityAt: at,
+      path: '/tmp/p',
+      category: 'metaswarm',
       hasMetrics: true,
       collectionStatus: 'ok',
       collectionWarnings: [],    };

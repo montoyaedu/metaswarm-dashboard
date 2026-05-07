@@ -35,6 +35,11 @@ const advice = computed(() =>
 );
 
 const statusBadge = computed(() => {
+  // git-only projects get a distinct neutral badge (not a warning) to
+  // signal "we know this exists but it isn't metaswarm-managed yet."
+  if (props.project.category === 'git-only') {
+    return { type: 'info' as const, label: 'not yet managed' };
+  }
   switch (props.project.collectionStatus) {
     case 'failed':
       return { type: 'error' as const, label: 'failed' };
@@ -45,6 +50,8 @@ const statusBadge = computed(() => {
       return null;
   }
 });
+
+const isGitOnly = computed(() => props.project.category === 'git-only');
 
 function navigate(): void {
   void router.push({ name: 'project-detail', params: { name: props.project.name } });
@@ -69,8 +76,19 @@ function stopProp(e: Event): void {
       <template #header>
         <div class="header">
           <span class="title">{{ project.name }}</span>
+          <!-- git-only badge: simple tag (no popover); the placeholder card already speaks for itself. -->
+          <NTag
+            v-if="isGitOnly"
+            type="info"
+            size="small"
+            round
+            :data-testid="`status-badge-${project.name}`"
+          >
+            ⊘ not yet managed
+          </NTag>
+          <!-- metaswarm-managed projects with degraded/failed: tag + popover with advice. -->
           <NPopover
-            v-if="statusBadge !== null"
+            v-else-if="statusBadge !== null"
             trigger="click"
             placement="bottom-end"
             :width="380"

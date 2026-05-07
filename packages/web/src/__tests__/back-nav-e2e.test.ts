@@ -18,6 +18,8 @@ const SUMMARY = {
   blockedTasks: 1,
   prsMergedLast7d: null,
   lastActivityAt: '2026-05-06T10:00:00.000Z',
+  path: '/tmp/p',
+  category: 'metaswarm',
   hasMetrics: true,
       collectionStatus: 'ok',
       collectionWarnings: [],};

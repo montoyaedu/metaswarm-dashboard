@@ -35,6 +35,8 @@ describe('useProjects', () => {
           blockedTasks: 0,
           prsMergedLast7d: null,
           lastActivityAt: null,
+          path: '/tmp/p',
+          category: 'metaswarm',
           hasMetrics: true,
       collectionStatus: 'ok',
       collectionWarnings: [],        },

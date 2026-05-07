@@ -26,6 +26,8 @@ export function toProjectSummary(
   if (latest === null) {
     return {
       name: projectName,
+      path: '',
+      category: 'metaswarm',
       activeTasks: 0,
       blockedTasks: 0,
       prsMergedLast7d: null,
@@ -37,13 +39,17 @@ export function toProjectSummary(
   }
   return {
     name: projectName,
+    path: latest.projectPath,
+    category: latest.category,
     activeTasks: latest.totals.totalActiveTasks,
     blockedTasks: latest.totals.totalBlockedTasks,
     prsMergedLast7d: latest.prsMergedLast7d, // always null per §2.6
     lastActivityAt: latest.totals.lastActivityAt,
     // A "failed" snapshot still gets a card, but with hasMetrics=false so
     // the empty-state messaging doesn't conflict with "everything is fine."
-    hasMetrics: latest.collectionStatus !== 'failed',
+    // git-only projects also get hasMetrics=false (placeholder cards).
+    hasMetrics:
+      latest.collectionStatus !== 'failed' && latest.category !== 'git-only',
     collectionStatus: latest.collectionStatus,
     collectionWarnings: latest.collectionWarnings,
   };

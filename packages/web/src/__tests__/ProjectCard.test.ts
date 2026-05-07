@@ -11,6 +11,8 @@ const HasMetrics: ProjectSummary = {
   blockedTasks: 2,
   prsMergedLast7d: null,
   lastActivityAt: new Date(Date.now() - 90 * 60_000).toISOString(),
+  path: '/tmp/p',
+  category: 'metaswarm',
   hasMetrics: true,
       collectionStatus: 'ok',
       collectionWarnings: [],};
@@ -21,6 +23,8 @@ const NeverActive: ProjectSummary = {
   blockedTasks: 0,
   prsMergedLast7d: null,
   lastActivityAt: null,
+  path: '/tmp/p',
+  category: 'metaswarm',
   hasMetrics: false,
       collectionStatus: 'ok',
       collectionWarnings: [],};

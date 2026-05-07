@@ -35,6 +35,10 @@ export type SwarmMetrics = z.infer<typeof SwarmMetrics>;
 export const DailySnapshot = z.object({
   schemaVersion: z.literal(1),
   projectName: z.string().min(1),
+  /** Absolute path of the project root (used for hierarchy grouping). */
+  projectPath: z.string().default(''),
+  /** Project category — defaults to `metaswarm` for backwards compat. */
+  category: z.enum(['metaswarm', 'git-only']).default('metaswarm'),
   /** UTC ISO-8601 instant the snapshot was generated. */
   generatedAt: z.string().datetime({ offset: false }),
   /** UTC daily key in `YYYY-MM-DD` format. */
@@ -42,13 +46,7 @@ export const DailySnapshot = z.object({
   agents: z.array(AgentMetrics),
   totals: SwarmMetrics,
   prsMergedLast7d: z.literal(null),
-  /**
-   * Status of the collection run that produced this snapshot. Defaults
-   * to 'ok' for backwards-compat with snapshots written before this
-   * field was added.
-   */
   collectionStatus: z.enum(['ok', 'degraded', 'failed']).default('ok'),
-  /** Warnings raised during this snapshot's collection run. */
   collectionWarnings: z.array(z.string()).default([]),
 });
 export type DailySnapshot = z.infer<typeof DailySnapshot>;
@@ -62,13 +60,14 @@ export type DailySnapshot = z.infer<typeof DailySnapshot>;
 export const WeeklySnapshot = z.object({
   schemaVersion: z.literal(1),
   projectName: z.string().min(1),
+  projectPath: z.string().default(''),
+  category: z.enum(['metaswarm', 'git-only']).default('metaswarm'),
   generatedAt: z.string().datetime({ offset: false }),
   /** ISO-8601 week-date in `YYYY-Www` format (e.g. `2026-W19`). */
   isoWeek: z.string().regex(/^\d{4}-W\d{2}$/),
   agents: z.array(AgentMetrics),
   totals: SwarmMetrics,
   prsMergedLast7d: z.literal(null),
-  /** False when the prior week had no daily snapshots. */
   complete: z.boolean(),
   collectionStatus: z.enum(['ok', 'degraded', 'failed']).default('ok'),
   collectionWarnings: z.array(z.string()).default([]),
