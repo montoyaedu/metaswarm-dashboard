@@ -292,10 +292,54 @@ if [ "$DO_DISCOVER" -eq 1 ] || [ "$CONFIG_FRESHLY_CREATED" -eq 1 ]; then
           sed -i.bak 's/^projects: \[\][[:space:]]*$/projects:/' "$CFG"
           rm -f "$CFG.bak"
         fi
-        printf '\n# discovered %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$CFG"
-        # Skip the YAML preamble (header + `projects:` line) and append only entries.
-        grep -E '^[[:space:]]+- name:|^[[:space:]]{4,}(path|category):' "$TMP_YAML" >> "$CFG"
-        echo "✓ appended to $CFG"
+        # Dedup against the existing config: skip any project entry whose
+        # `path:` is already present in $CFG. Prevents duplicates when
+        # re-running discovery (e.g. to add newly-installed projects or
+        # to switch on --include-git-only after a metaswarm-only first pass).
+        EXISTING_PATHS_FILE="$(mktemp -t metaswarm-existing-paths.XXXXXX)"
+        grep -E '^[[:space:]]+path:' "$CFG" 2>/dev/null \
+          | sed -E "s/^[[:space:]]+path:[[:space:]]*//; s/^[\"']//; s/[\"']\$//" \
+          > "$EXISTING_PATHS_FILE" || true
+        TMP_NEW="$(mktemp -t metaswarm-discover-new.XXXXXX)"
+        # awk walks the discovery YAML in 3-line blocks (name/path/category)
+        # and emits only the blocks whose path isn't in the existing-paths file.
+        # Reads existing paths from a file (not -v) so newline-separated lists
+        # work correctly.
+        awk -v existing_file="$EXISTING_PATHS_FILE" '
+          BEGIN {
+            while ((getline line < existing_file) > 0) {
+              seen[line] = 1
+            }
+            close(existing_file)
+          }
+          /^[[:space:]]+- name:/ { name = $0; next }
+          /^[[:space:]]+path:/ {
+            p = $0
+            sub(/^[[:space:]]+path:[[:space:]]*/, "", p)
+            sub(/^["\x27]/, "", p)
+            sub(/["\x27]$/, "", p)
+            keep = (seen[p] != 1)
+            if (keep) { print name; print $0 }
+            current_keep = keep
+            next
+          }
+          /^[[:space:]]+category:/ { if (current_keep) print $0; next }
+        ' "$TMP_YAML" > "$TMP_NEW"
+        rm -f "$EXISTING_PATHS_FILE"
+
+        new_count=$(grep -cE '^[[:space:]]+- name:' "$TMP_NEW" 2>/dev/null || echo 0)
+        total_discovered=$(grep -cE '^  - name:' "$TMP_YAML" 2>/dev/null || echo 0)
+        skipped_count=$((total_discovered - new_count))
+
+        if [ "$new_count" -eq 0 ]; then
+          echo "→ nothing new to append (all $skipped_count discovered entries are already in the config)."
+        else
+          printf '\n# discovered %s (added %s, deduped %s)\n' \
+            "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$new_count" "$skipped_count" >> "$CFG"
+          cat "$TMP_NEW" >> "$CFG"
+          echo "✓ appended $new_count new entries to $CFG (deduped $skipped_count already-present)"
+        fi
+        rm -f "$TMP_NEW"
 
         # If we just resolved roots interactively (no prior settings file)
         # AND the resolution wasn't from CLI args, persist them.
