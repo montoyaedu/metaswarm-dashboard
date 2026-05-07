@@ -64,6 +64,22 @@ A future `metaswarm-dashboard config discover` subcommand will integrate this â€
 
 ## Quick start
 
+The fastest path is the bundled starter:
+
+```bash
+# Verifies node, builds if needed, initializes config.yaml on first run,
+# then collect --all, then serve. Idempotent â€” safe to re-run anytime.
+./start.sh
+
+# First-time setup tip: scan one or more parent dirs for .beads/-tracked
+# projects and review-then-append them to config.yaml interactively:
+./start.sh --discover ~/code ~/work
+
+# See `./start.sh --help` for --reinit / --no-collect / --no-serve / --port flags.
+```
+
+If you prefer the manual path (or want to script the steps individually):
+
 ```bash
 # 1. Write a starter config.yaml at the XDG-aware location.
 metaswarm-dashboard config init
@@ -75,7 +91,7 @@ metaswarm-dashboard config init
 #   - name: foo
 #     path: ~/code/foo
 #   - name: bar
-#     path: /Users/you/work/bar
+#     path: ~/work/bar
 
 # 3. Collect snapshots from every project.
 metaswarm-dashboard collect --all
