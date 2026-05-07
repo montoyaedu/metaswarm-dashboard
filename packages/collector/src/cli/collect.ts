@@ -4,6 +4,7 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join as pathJoin } from 'node:path';
 
+import { configFile, dataDir, defaultEnv, type PathsEnv } from '@metaswarm-dashboard/types/paths';
 import {
   type DailySnapshot,
   type WeeklySnapshot,
@@ -18,7 +19,6 @@ import {
   previousIsoWeekKey,
   utcDayKey,
 } from '../metrics.js';
-import { configFile, dataDir, defaultEnv, type PathsEnv } from '../paths.js';
 import {
   type WriterFsHooks,
   atomicWriteJson,

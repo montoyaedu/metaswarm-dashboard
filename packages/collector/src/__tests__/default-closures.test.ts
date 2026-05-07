@@ -5,11 +5,11 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import { defaultEnv } from '@metaswarm-dashboard/types/paths';
 import { describe, expect, it } from 'vitest';
 
 import { runConfigInit } from '../cli/config-init.js';
 import { ConfigError, loadConfig } from '../config.js';
-import { defaultEnv } from '../paths.js';
 
 describe('paths.defaultEnv', () => {
   it('returns the runtime platform/homeDir/env', () => {

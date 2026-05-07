@@ -1,10 +1,10 @@
 // WU-2.4 — YAML loader: parse, expand `~`, validate, reject relative paths,
 // surface ConfigError with hint pointing to `config init`.
 
+import type { PathsEnv } from '@metaswarm-dashboard/types/paths';
 import { describe, expect, it } from 'vitest';
 
 import { ConfigError, loadConfig } from '../config.js';
-import type { PathsEnv } from '../paths.js';
 
 const HOME = '/home/test';
 

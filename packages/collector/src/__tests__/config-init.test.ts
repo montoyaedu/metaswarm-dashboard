@@ -5,10 +5,10 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import type { PathsEnv } from '@metaswarm-dashboard/types/paths';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { runConfigInit } from '../cli/config-init.js';
-import type { PathsEnv } from '../paths.js';
 
 let TMP_HOME: string;
 

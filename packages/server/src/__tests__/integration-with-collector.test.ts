@@ -48,6 +48,8 @@ describe('collector writer ↔ server reader contract', () => {
         lastActivityAt: `${dayKey}T10:00:00.000Z`,
       },
       prsMergedLast7d: null,
+    collectionStatus: 'ok',
+    collectionWarnings: [],
     };
 
     // Run-time double-check via Zod — same schema the reader uses.

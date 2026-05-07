@@ -7,10 +7,10 @@
 import { readFileSync } from 'node:fs';
 import { isAbsolute } from 'node:path';
 
+import { expandHome, type PathsEnv, defaultEnv } from '@metaswarm-dashboard/types/paths';
 import yaml from 'js-yaml';
 import { z } from 'zod';
 
-import { expandHome, type PathsEnv, defaultEnv } from './paths.js';
 
 export const ProjectEntry = z.object({
   name: z.string().min(1, 'project name must be a non-empty string'),

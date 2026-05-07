@@ -3,6 +3,8 @@
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 
+import { dataDir as resolveDataDir } from '@metaswarm-dashboard/types/paths';
+
 import { buildServer } from '../server.js';
 
 const DEFAULT_PORT = 5174;
@@ -78,10 +80,12 @@ export async function runServe(opts: RunServeOptions = {}): Promise<RunServeResu
     return { exitCode: 1 };
   }
 
-  const dataDir =
-    opts.dataDir ??
-    process.env.METASWARM_DASHBOARD_DATA_DIR ??
-    resolve(process.cwd(), '.metaswarm-dashboard-data');
+  // Use the same XDG-aware resolver the collector uses (defined in
+  // @metaswarm-dashboard/types/paths). This keeps writer (collect) and
+  // reader (serve) aligned by construction. opts.dataDir override still
+  // wins for tests; METASWARM_DASHBOARD_DATA_DIR is honored by the
+  // resolver itself.
+  const dataDir = opts.dataDir ?? resolveDataDir();
   const staticRoot = opts.staticRoot ?? resolve(process.cwd(), 'packages/web/dist');
 
   const app = await buildServer({ dataDir, staticRoot });

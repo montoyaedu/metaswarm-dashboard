@@ -6,7 +6,7 @@
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 
-import { configFile, type PathsEnv, defaultEnv } from '../paths.js';
+import { configFile, type PathsEnv, defaultEnv } from '@metaswarm-dashboard/types/paths';
 
 export interface ConfigInitOptions {
   /** Overwrite an existing config.yaml. */

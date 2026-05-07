@@ -27,6 +27,8 @@ function snap(dayKey: string, completed7d = 5, agents: DailySnapshot['agents'] =
       lastActivityAt: `${dayKey}T10:00:00.000Z`,
     },
     prsMergedLast7d: null,
+    collectionStatus: 'ok',
+    collectionWarnings: [],
   };
 }
 

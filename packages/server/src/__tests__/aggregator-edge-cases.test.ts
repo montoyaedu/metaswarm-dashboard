@@ -19,6 +19,8 @@ function snap(agents: DailySnapshot['agents'], dayKey = '2026-05-06'): DailySnap
       lastActivityAt: null,
     },
     prsMergedLast7d: null,
+    collectionStatus: 'ok',
+    collectionWarnings: [],
   };
 }
 

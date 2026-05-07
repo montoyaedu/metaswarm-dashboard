@@ -1,6 +1,7 @@
 // WU-2.6 — `config init --help` text contains description, --force flag,
 // resolved target path on the current platform, and one example.
 
+import type { PathsEnv } from '@metaswarm-dashboard/types/paths';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -8,7 +9,6 @@ import {
   HELP_EXAMPLES,
   buildConfigInitHelpText,
 } from '../cli/config-init.js';
-import type { PathsEnv } from '../paths.js';
 
 describe('config init --help text', () => {
   it('contains a one-line description', () => {

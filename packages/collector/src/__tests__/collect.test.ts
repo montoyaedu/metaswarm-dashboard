@@ -4,11 +4,11 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync, existsSync
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
+import type { PathsEnv } from '@metaswarm-dashboard/types/paths';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import type { BeadsExecutor } from '../beads-reader.js';
 import { runCollect } from '../cli/collect.js';
-import type { PathsEnv } from '../paths.js';
 
 const FIXTURES = resolve(import.meta.dirname, 'fixtures/host-repos');
 

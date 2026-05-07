@@ -20,6 +20,10 @@
     "./snapshots": {
       "types": "./dist/snapshots.d.ts",
       "import": "./dist/snapshots.js"
+    },
+    "./paths": {
+      "types": "./dist/paths.d.ts",
+      "import": "./dist/paths.js"
     }
   },
   "files": [
