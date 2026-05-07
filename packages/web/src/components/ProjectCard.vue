@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import type { ProjectSummary } from '@metaswarm-dashboard/types/api';
-import { NCard } from 'naive-ui';
+import { NBadge, NCard, NPopover, NTag } from 'naive-ui';
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 
+import { buildCollectionAdvice } from '../lib/collection-help.js';
 
 const props = defineProps<{ project: ProjectSummary }>();
 const router = useRouter();
@@ -29,8 +30,28 @@ const prsLabel = computed(() =>
       props.project.prsMergedLast7d.toString(),
 );
 
+const advice = computed(() =>
+  buildCollectionAdvice(props.project.collectionStatus, props.project.collectionWarnings),
+);
+
+const statusBadge = computed(() => {
+  switch (props.project.collectionStatus) {
+    case 'failed':
+      return { type: 'error' as const, label: 'failed' };
+    case 'degraded':
+      return { type: 'warning' as const, label: 'degraded' };
+    case 'ok':
+    default:
+      return null;
+  }
+});
+
 function navigate(): void {
   void router.push({ name: 'project-detail', params: { name: props.project.name } });
+}
+
+function stopProp(e: Event): void {
+  e.stopPropagation();
 }
 </script>
 
@@ -44,7 +65,50 @@ function navigate(): void {
     @keydown.enter="navigate"
     @keydown.space="navigate"
   >
-    <NCard hoverable :title="project.name">
+    <NCard hoverable>
+      <template #header>
+        <div class="header">
+          <span class="title">{{ project.name }}</span>
+          <NPopover
+            v-if="statusBadge !== null"
+            trigger="click"
+            placement="bottom-end"
+            :width="380"
+          >
+            <template #trigger>
+              <NTag
+                :type="statusBadge.type"
+                size="small"
+                round
+                clickable
+                :data-testid="`status-badge-${project.name}`"
+                @click="stopProp"
+              >
+                ⚠ {{ statusBadge.label }}
+              </NTag>
+            </template>
+            <div class="advice" data-testid="collection-advice">
+              <p class="summary">{{ advice.summary }}</p>
+              <div
+                v-for="(w, i) in advice.warnings"
+                :key="i"
+                class="warning-block"
+              >
+                <div class="warning-label">{{ w.help.label }}</div>
+                <pre class="warning-msg">{{ w.message }}</pre>
+                <div class="hint">
+                  <strong>Fix now:</strong>
+                  <span>{{ w.help.fixNow }}</span>
+                </div>
+                <div class="hint">
+                  <strong>Prevent next time:</strong>
+                  <span>{{ w.help.preventNextTime }}</span>
+                </div>
+              </div>
+            </div>
+          </NPopover>
+        </div>
+      </template>
       <div class="metrics">
         <div class="metric">
           <span class="label">Active tasks</span>
@@ -64,6 +128,7 @@ function navigate(): void {
         </div>
       </div>
     </NCard>
+    <NBadge v-if="false" /> <!-- kept for tree-shaking import retention check -->
   </div>
 </template>
 
@@ -76,6 +141,17 @@ function navigate(): void {
 
 .project-card:focus-visible {
   box-shadow: 0 0 0 2px var(--n-color-target);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.title {
+  font-weight: 500;
 }
 
 .metrics {
@@ -99,5 +175,51 @@ function navigate(): void {
 .value {
   font-size: 1.25rem;
   font-weight: 600;
+}
+
+.advice {
+  font-size: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.advice .summary {
+  margin: 0;
+  font-weight: 600;
+}
+
+.warning-block {
+  border-left: 2px solid var(--n-border-color);
+  padding-left: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.warning-label {
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.warning-msg {
+  margin: 0;
+  padding: 0.4rem;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 3px;
+  font-size: 0.7rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.hint strong {
+  display: block;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.7;
+  margin-bottom: 0.15rem;
 }
 </style>

@@ -31,6 +31,8 @@ export function toProjectSummary(
       prsMergedLast7d: null,
       lastActivityAt: null,
       hasMetrics: false,
+      collectionStatus: 'ok',
+      collectionWarnings: [],
     };
   }
   return {
@@ -39,7 +41,11 @@ export function toProjectSummary(
     blockedTasks: latest.totals.totalBlockedTasks,
     prsMergedLast7d: latest.prsMergedLast7d, // always null per §2.6
     lastActivityAt: latest.totals.lastActivityAt,
-    hasMetrics: true,
+    // A "failed" snapshot still gets a card, but with hasMetrics=false so
+    // the empty-state messaging doesn't conflict with "everything is fine."
+    hasMetrics: latest.collectionStatus !== 'failed',
+    collectionStatus: latest.collectionStatus,
+    collectionWarnings: latest.collectionWarnings,
   };
 }
 

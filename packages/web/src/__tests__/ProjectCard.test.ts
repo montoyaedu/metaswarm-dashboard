@@ -12,7 +12,8 @@ const HasMetrics: ProjectSummary = {
   prsMergedLast7d: null,
   lastActivityAt: new Date(Date.now() - 90 * 60_000).toISOString(),
   hasMetrics: true,
-};
+      collectionStatus: 'ok',
+      collectionWarnings: [],};
 
 const NeverActive: ProjectSummary = {
   name: 'beta',
@@ -21,7 +22,8 @@ const NeverActive: ProjectSummary = {
   prsMergedLast7d: null,
   lastActivityAt: null,
   hasMetrics: false,
-};
+      collectionStatus: 'ok',
+      collectionWarnings: [],};
 
 function makeRouter(): Router {
   return createRouter({

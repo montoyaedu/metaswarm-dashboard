@@ -13,7 +13,8 @@ describe('cross-package import @metaswarm-dashboard/types (web)', () => {
       prsMergedLast7d: null,
       lastActivityAt: null,
       hasMetrics: false,
-    };
+      collectionStatus: 'ok',
+      collectionWarnings: [],    };
     expect(sample.hasMetrics).toBe(false);
   });
 

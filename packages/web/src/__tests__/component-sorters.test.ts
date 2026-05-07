@@ -26,7 +26,8 @@ const SAMPLE: ProjectSummary = {
   prsMergedLast7d: null,
   lastActivityAt: null,
   hasMetrics: true,
-};
+      collectionStatus: 'ok',
+      collectionWarnings: [],};
 
 describe('ProjectCard keyboard handlers', () => {
   it('Enter key navigates to the detail route', async () => {
@@ -63,7 +64,8 @@ describe('ProjectCard relative-time formatter branches', () => {
       prsMergedLast7d: null,
       lastActivityAt: at,
       hasMetrics: true,
-    };
+      collectionStatus: 'ok',
+      collectionWarnings: [],    };
   }
 
   it('renders "just now" for very recent timestamps', async () => {

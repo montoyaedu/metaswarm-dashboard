@@ -158,6 +158,29 @@ export async function runCollect(opts: RunCollectOptions = {}): Promise<RunColle
     if (read.skipped) {
       stdout(`[skip] ${project.name}: ${read.skipReason ?? 'no .beads/'}`);
       result.projectsSkipped.push({ name: project.name, reason: read.skipReason ?? '' });
+      // Persist a "failed" snapshot so the SPA can render the project's
+      // real error rather than empty-state confusion.
+      const failedDaily: DailySnapshot = {
+        schemaVersion: 1,
+        projectName: project.name,
+        generatedAt: now.toISOString(),
+        dayKey,
+        agents: [],
+        totals: {
+          totalActiveTasks: 0,
+          totalBlockedTasks: 0,
+          totalCompletedTasksLast7d: 0,
+          lastActivityAt: null,
+        },
+        prsMergedLast7d: null,
+        collectionStatus: 'failed',
+        collectionWarnings: [read.skipReason ?? 'no .beads/ directory found'],
+      };
+      atomicWriteJson(
+        dailySnapshotPath(dataPath, project.name, dayKey),
+        JSON.stringify(failedDaily, null, 2),
+        opts.writerFs,
+      );
       continue;
     }
     for (const w of read.warnings) {
@@ -165,6 +188,8 @@ export async function runCollect(opts: RunCollectOptions = {}): Promise<RunColle
       result.warnings.push(`${project.name}: ${w}`);
     }
     const { agents, totals } = computeMetrics(read.rows, now);
+    const collectionStatus: 'ok' | 'degraded' | 'failed' =
+      read.warnings.length > 0 ? 'degraded' : 'ok';
 
     const daily: DailySnapshot = {
       schemaVersion: 1,
@@ -174,6 +199,8 @@ export async function runCollect(opts: RunCollectOptions = {}): Promise<RunColle
       agents,
       totals,
       prsMergedLast7d: null,
+      collectionStatus,
+      collectionWarnings: read.warnings,
     };
     const writerFs = opts.writerFs;
     atomicWriteJson(
@@ -198,6 +225,8 @@ export async function runCollect(opts: RunCollectOptions = {}): Promise<RunColle
         totals,
         prsMergedLast7d: null,
         complete: priorWeekHasDaily,
+        collectionStatus,
+        collectionWarnings: read.warnings,
       };
       atomicWriteJson(
         weeklySnapshotPath(dataPath, project.name, priorWeek),

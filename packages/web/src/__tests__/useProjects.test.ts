@@ -36,7 +36,8 @@ describe('useProjects', () => {
           prsMergedLast7d: null,
           lastActivityAt: null,
           hasMetrics: true,
-        },
+      collectionStatus: 'ok',
+      collectionWarnings: [],        },
       ],
     });
     const state = useProjects(c);

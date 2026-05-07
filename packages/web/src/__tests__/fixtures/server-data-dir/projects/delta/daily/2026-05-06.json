@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "projectName": "delta",
+  "generatedAt": "2026-05-06T12:00:00.000Z",
+  "dayKey": "2026-05-06",
+  "agents": [],
+  "totals": {
+    "totalActiveTasks": 0,
+    "totalBlockedTasks": 0,
+    "totalCompletedTasksLast7d": 0,
+    "lastActivityAt": null
+  },
+  "prsMergedLast7d": null,
+  "collectionStatus": "failed",
+  "collectionWarnings": [
+    "bd list --json failed: Command failed: bd list --json\nError: no beads database found\nHint: run 'bd doctor' to diagnose, or 'bd init' to create a new database"
+  ]
+}

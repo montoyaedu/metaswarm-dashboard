@@ -42,6 +42,14 @@ export const DailySnapshot = z.object({
   agents: z.array(AgentMetrics),
   totals: SwarmMetrics,
   prsMergedLast7d: z.literal(null),
+  /**
+   * Status of the collection run that produced this snapshot. Defaults
+   * to 'ok' for backwards-compat with snapshots written before this
+   * field was added.
+   */
+  collectionStatus: z.enum(['ok', 'degraded', 'failed']).default('ok'),
+  /** Warnings raised during this snapshot's collection run. */
+  collectionWarnings: z.array(z.string()).default([]),
 });
 export type DailySnapshot = z.infer<typeof DailySnapshot>;
 
@@ -62,6 +70,8 @@ export const WeeklySnapshot = z.object({
   prsMergedLast7d: z.literal(null),
   /** False when the prior week had no daily snapshots. */
   complete: z.boolean(),
+  collectionStatus: z.enum(['ok', 'degraded', 'failed']).default('ok'),
+  collectionWarnings: z.array(z.string()).default([]),
 });
 export type WeeklySnapshot = z.infer<typeof WeeklySnapshot>;
 

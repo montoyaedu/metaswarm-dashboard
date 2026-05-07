@@ -54,7 +54,8 @@ describe('ProjectsIndex', () => {
         prsMergedLast7d: null,
         lastActivityAt: null,
         hasMetrics: true,
-      },
+      collectionStatus: 'ok',
+      collectionWarnings: [],      },
       {
         name: 'beta',
         activeTasks: 2,
@@ -62,7 +63,8 @@ describe('ProjectsIndex', () => {
         prsMergedLast7d: null,
         lastActivityAt: null,
         hasMetrics: true,
-      },
+      collectionStatus: 'ok',
+      collectionWarnings: [],      },
     ]);
     const router = makeRouterWithProjectsIndex();
     const w = mount(App, { global: { plugins: [router] } });
@@ -93,7 +95,8 @@ describe('ProjectsIndex', () => {
         prsMergedLast7d: null,
         lastActivityAt: null,
         hasMetrics: false,
-      },
+      collectionStatus: 'ok',
+      collectionWarnings: [],      },
     ]);
     const router = makeRouterWithProjectsIndex();
     const w = mount(App, { global: { plugins: [router] } });
@@ -115,7 +118,8 @@ describe('ProjectsIndex', () => {
         prsMergedLast7d: null,
         lastActivityAt: null,
         hasMetrics: true,
-      },
+      collectionStatus: 'ok',
+      collectionWarnings: [],      },
     ]);
     const router = makeRouterWithProjectsIndex();
     const w = mount(App, { global: { plugins: [router] } });

@@ -1,6 +1,9 @@
 // API response shapes (per plan §2.3). One source of truth — server writes
 // these, web consumes them.
 
+/** Status of the most recent `collect` run for this project. */
+export type CollectionStatus = 'ok' | 'degraded' | 'failed';
+
 export interface ProjectSummary {
   name: string;
   activeTasks: number;
@@ -8,6 +11,16 @@ export interface ProjectSummary {
   prsMergedLast7d: number | null; // ALWAYS null in MVP (plan §2.6)
   lastActivityAt: string | null; // ISO-8601 UTC
   hasMetrics: boolean;
+  /**
+   * Status of the most recent collection. `ok` means no warnings were
+   * raised. `degraded` means the collector got SOME data but logged
+   * warnings (e.g. `bd list --json` failed but `.beads/issues.jsonl` was
+   * still readable). `failed` means the project was skipped entirely
+   * (no `.beads/`, missing path, etc.).
+   */
+  collectionStatus: CollectionStatus;
+  /** Operator-readable warnings from the most recent collection. */
+  collectionWarnings: string[];
 }
 
 export type GetProjectsResponse = ProjectSummary[];
