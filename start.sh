@@ -28,9 +28,14 @@
 # UTC daily snapshot (per the writer's atomic-rename design).
 #
 # Flags:
-#   --discover [<root>...]   Force discovery now (even if config.yaml exists).
-#                            Roots come from the args; if none given, falls
-#                            back to (b) then (c) above.
+#   --discover [<root>...]   Override the discovery roots for THIS run.
+#                            Discovery itself runs by default on every
+#                            invocation; this flag just lets you target
+#                            a different parent dir without editing
+#                            discover-roots.txt. Idempotent (deduped).
+#   --no-discover            Skip discovery entirely. Useful for cron /
+#                            CI runs where you want predictable
+#                            non-interactive behavior.
 #   --reinit                 Wipe config.yaml + re-run config init. Use
 #                            this if your YAML got corrupted or you want
 #                            a fresh starter file.
@@ -66,7 +71,11 @@ in_repo() {
 # -----------------------------------------------------------------------------
 # Defaults
 # -----------------------------------------------------------------------------
-DO_DISCOVER=0
+# Discovery runs by default on every invocation. The dedup logic (added
+# in 2bf33ff) makes it cheap and idempotent — only NEW projects trigger
+# the prompt; if nothing's new, discovery skips silently. Pass
+# --no-discover to disable (cron / CI / non-interactive contexts).
+DO_DISCOVER=1
 DO_REINIT=0
 RESET_DISCOVER_ROOTS=0
 DO_COLLECT=1
@@ -87,6 +96,7 @@ while [ "$#" -gt 0 ]; do
         DISCOVER_ROOTS+=("$1"); shift
       done
       ;;
+    --no-discover)          DO_DISCOVER=0; shift ;;
     --reinit)               DO_REINIT=1; shift ;;
     --reset-discover-roots) RESET_DISCOVER_ROOTS=1; shift ;;
     --include-git-only)     INCLUDE_GIT_ONLY=1; shift ;;
@@ -272,91 +282,95 @@ if [ "$DO_DISCOVER" -eq 1 ] || [ "$CONFIG_FRESHLY_CREATED" -eq 1 ]; then
     fi
   fi
 
-  # Show + prompt append (only if there's actual content to append).
+  # Dedup against the existing config FIRST (before any prompt) so we
+  # only nag the operator when there's actually something new. The dedup
+  # logic itself is described in commit 2bf33ff.
   if grep -q '^  - name:' "$TMP_YAML"; then
-    echo "─────────────────────────────────────────────"
-    cat "$TMP_YAML"
-    echo "─────────────────────────────────────────────"
-    printf '\nAppend the discovered projects to %s? [y/N] ' "$CFG"
-    read -r reply
-    case "$reply" in
-      [yY]|[yY][eE][sS])
-        mkdir -p "$(dirname "$CFG")"
-        # The starter `config init` writes `projects: []` (empty array,
-        # closed). If we naively append `- name:` items after that, they
-        # become orphaned at the YAML root and the loader silently keeps
-        # `projects: []`. Convert the closed empty array to an open list
-        # before appending. Idempotent — no-op if already opened.
-        if grep -qE '^projects: \[\][[:space:]]*$' "$CFG"; then
-          # macOS sed needs the empty -i argument; --posix-portable variant.
-          sed -i.bak 's/^projects: \[\][[:space:]]*$/projects:/' "$CFG"
-          rm -f "$CFG.bak"
-        fi
-        # Dedup against the existing config: skip any project entry whose
-        # `path:` is already present in $CFG. Prevents duplicates when
-        # re-running discovery (e.g. to add newly-installed projects or
-        # to switch on --include-git-only after a metaswarm-only first pass).
-        EXISTING_PATHS_FILE="$(mktemp -t metaswarm-existing-paths.XXXXXX)"
-        grep -E '^[[:space:]]+path:' "$CFG" 2>/dev/null \
-          | sed -E "s/^[[:space:]]+path:[[:space:]]*//; s/^[\"']//; s/[\"']\$//" \
-          > "$EXISTING_PATHS_FILE" || true
-        TMP_NEW="$(mktemp -t metaswarm-discover-new.XXXXXX)"
-        # awk walks the discovery YAML in 3-line blocks (name/path/category)
-        # and emits only the blocks whose path isn't in the existing-paths file.
-        # Reads existing paths from a file (not -v) so newline-separated lists
-        # work correctly.
-        awk -v existing_file="$EXISTING_PATHS_FILE" '
-          BEGIN {
-            while ((getline line < existing_file) > 0) {
-              seen[line] = 1
-            }
-            close(existing_file)
-          }
-          /^[[:space:]]+- name:/ { name = $0; next }
-          /^[[:space:]]+path:/ {
-            p = $0
-            sub(/^[[:space:]]+path:[[:space:]]*/, "", p)
-            sub(/^["\x27]/, "", p)
-            sub(/["\x27]$/, "", p)
-            keep = (seen[p] != 1)
-            if (keep) { print name; print $0 }
-            current_keep = keep
-            next
-          }
-          /^[[:space:]]+category:/ { if (current_keep) print $0; next }
-        ' "$TMP_YAML" > "$TMP_NEW"
-        rm -f "$EXISTING_PATHS_FILE"
+    EXISTING_PATHS_FILE="$(mktemp -t metaswarm-existing-paths.XXXXXX)"
+    grep -E '^[[:space:]]+path:' "$CFG" 2>/dev/null \
+      | sed -E "s/^[[:space:]]+path:[[:space:]]*//; s/^[\"']//; s/[\"']\$//" \
+      > "$EXISTING_PATHS_FILE" || true
+    TMP_NEW="$(mktemp -t metaswarm-discover-new.XXXXXX)"
+    # awk walks the discovery YAML in 3-line blocks (name/path/category)
+    # and emits only the blocks whose path isn't in the existing-paths file.
+    # Reads existing paths from a file (not -v) so newline-separated lists
+    # work correctly.
+    awk -v existing_file="$EXISTING_PATHS_FILE" '
+      BEGIN {
+        while ((getline line < existing_file) > 0) {
+          seen[line] = 1
+        }
+        close(existing_file)
+      }
+      /^[[:space:]]+- name:/ { name = $0; next }
+      /^[[:space:]]+path:/ {
+        p = $0
+        sub(/^[[:space:]]+path:[[:space:]]*/, "", p)
+        sub(/^["\x27]/, "", p)
+        sub(/["\x27]$/, "", p)
+        keep = (seen[p] != 1)
+        if (keep) { print name; print $0 }
+        current_keep = keep
+        next
+      }
+      /^[[:space:]]+category:/ { if (current_keep) print $0; next }
+    ' "$TMP_YAML" > "$TMP_NEW"
+    rm -f "$EXISTING_PATHS_FILE"
 
-        new_count=$(grep -cE '^[[:space:]]+- name:' "$TMP_NEW" 2>/dev/null || echo 0)
-        total_discovered=$(grep -cE '^  - name:' "$TMP_YAML" 2>/dev/null || echo 0)
-        skipped_count=$((total_discovered - new_count))
+    # grep -c always prints a number on stdout (even on no-match), and
+    # exits 1 when no matches. We disable -e for these two assignments
+    # so the exit-1 doesn't trip set -e, and we don't add `|| echo 0`
+    # (which would double-print on no-match).
+    new_count=$(set +e; grep -cE '^[[:space:]]+- name:' "$TMP_NEW" 2>/dev/null; true)
+    total_discovered=$(set +e; grep -cE '^  - name:' "$TMP_YAML" 2>/dev/null; true)
+    skipped_count=$((total_discovered - new_count))
 
-        if [ "$new_count" -eq 0 ]; then
-          echo "→ nothing new to append (all $skipped_count discovered entries are already in the config)."
-        else
+    if [ "$new_count" -eq 0 ]; then
+      # Nothing new — silent skip with a one-line summary. No prompt.
+      echo "→ discovery: $skipped_count projects already in config; nothing new."
+      rm -f "$TMP_NEW"
+    else
+      # Show ONLY the new entries and prompt.
+      echo "─────────────────────────────────────────────"
+      echo "# $new_count NEW project(s) found ($skipped_count already in config):"
+      cat "$TMP_NEW"
+      echo "─────────────────────────────────────────────"
+      printf '\nAppend the %s new project(s) to %s? [Y/n] ' "$new_count" "$CFG"
+      read -r reply
+      case "$reply" in
+        ''|[yY]|[yY][eE][sS])
+          mkdir -p "$(dirname "$CFG")"
+          # If the starter wrote `projects: []` (closed empty array),
+          # convert it to `projects:` (open list) before appending so
+          # the new entries land under the projects key, not at the
+          # YAML root. Idempotent.
+          if grep -qE '^projects: \[\][[:space:]]*$' "$CFG"; then
+            sed -i.bak 's/^projects: \[\][[:space:]]*$/projects:/' "$CFG"
+            rm -f "$CFG.bak"
+          fi
           printf '\n# discovered %s (added %s, deduped %s)\n' \
             "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$new_count" "$skipped_count" >> "$CFG"
           cat "$TMP_NEW" >> "$CFG"
-          echo "✓ appended $new_count new entries to $CFG (deduped $skipped_count already-present)"
-        fi
-        rm -f "$TMP_NEW"
+          echo "✓ appended $new_count new entries to $CFG"
 
-        # If we just resolved roots interactively (no prior settings file)
-        # AND the resolution wasn't from CLI args, persist them.
-        if [ ! -f "$DISCOVER_SETTINGS" ] && [ "${#DISCOVER_ROOTS[@]}" -eq 0 ]; then
-          mkdir -p "$(dirname "$DISCOVER_SETTINGS")"
-          {
-            echo "# metaswarm-dashboard discover-roots — $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-            echo "# Auto-saved on first successful discovery."
-            printf '%s\n' "${RESOLVED_ROOTS[@]}"
-          } > "$DISCOVER_SETTINGS"
-          echo "✓ remembered scan roots in $DISCOVER_SETTINGS"
-        fi
-        ;;
-      *)
-        echo "→ skipped append; you can edit $CFG manually"
-        ;;
-    esac
+          # If this was a first-time interactive resolution (no prior
+          # settings file, no CLI roots), persist the roots for next time.
+          if [ ! -f "$DISCOVER_SETTINGS" ] && [ "${#DISCOVER_ROOTS[@]}" -eq 0 ]; then
+            mkdir -p "$(dirname "$DISCOVER_SETTINGS")"
+            {
+              echo "# metaswarm-dashboard discover-roots — $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+              echo "# Auto-saved on first successful discovery."
+              printf '%s\n' "${RESOLVED_ROOTS[@]}"
+            } > "$DISCOVER_SETTINGS"
+            echo "✓ remembered scan roots in $DISCOVER_SETTINGS"
+          fi
+          ;;
+        *)
+          echo "→ skipped append; rerun with --no-discover to suppress this prompt next time, or edit $CFG manually"
+          ;;
+      esac
+      rm -f "$TMP_NEW"
+    fi
   fi
 fi
 
