@@ -1,0 +1,17 @@
+{
+  "name": "@metaswarm-dashboard/session-observer",
+  "private": true,
+  "version": "0.0.1",
+  "description": "Read-only PoC: summarize Claude Code session transcripts",
+  "type": "module",
+  "bin": {
+    "session-observer": "./cli.mjs"
+  },
+  "scripts": {
+    "list": "node cli.mjs list",
+    "agents": "node cli.mjs agents"
+  },
+  "engines": {
+    "node": ">=22.6.0"
+  }
+}
