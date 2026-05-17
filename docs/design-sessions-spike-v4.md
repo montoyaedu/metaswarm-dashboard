@@ -136,7 +136,7 @@ pattern WU-1 used for `atomicWriteJson`:
    ▼
  Fastify server (packages/server)            datalake (METASWARM_DASHBOARD_DATA_DIR)
    GET  /api/sessions          ─ read ─►       <dataDir>/projects/<name>/sessions/
-   GET  /api/sessions/:p/:s    ─ read ─►         <YYYY-MM-DD>/<sid>.rating.json
+   GET  /api/sessions/:p/:s    ─ read ─►         ratings/<sid>.rating.json
    GET  /api/calibration       ─ read ─►       (operator ratings — the only writes)
    PUT  /api/sessions/:p/:s/rating ─ write ─►  via writeSessionRating (atomic, contained)
    ▲
@@ -412,9 +412,13 @@ cross-session aggregation, the secret-pattern redactor.
 
 ## 13. Resolved questions (v4 round-1 open questions, now decided)
 
-- Rating storage: one `<sid>.rating.json` per session under
-  `<dataDir>/projects/<name>/sessions/<YYYY-MM-DD>/` — mirrors the snapshot
-  layout.
+- Rating storage: one **day-independent** `<sessionId>.rating.json` per
+  session at `<dataDir>/projects/<name>/sessions/ratings/`, keyed by
+  `(project, sessionId)` only. A rating is mutable operator state, so —
+  unlike a point-in-time snapshot — it must NOT be day-bucketed; a re-rate
+  upserts the single file. (Corrected from the v4 round-1 draft, which
+  mirrored the snapshot layout and would have split a cross-day re-rate
+  into two files.)
 - Discovery: live scan per request + an mtime+size-keyed bounded LRU
   parse/score cache (§7).
 - `unsure` is a distinct verdict — "I looked and can't tell" is a real

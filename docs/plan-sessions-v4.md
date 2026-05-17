@@ -120,12 +120,16 @@ Format per WU: **spec** (design ref) · **file scope** · **DoD** · **deps**.
   tsconfig project references and none are added.
 - **file scope:** `packages/server/src/` (route module(s), the cache,
   registration in `server.ts`), `packages/server/package.json`; tests.
-- **DoD:** endpoint tests via Fastify `app.inject` (success, `400`
-  malformed-project, `404`, the cache, traversal rejection); the config
-  loader is consumed via `@metaswarm-dashboard/types/config` — a grep
-  confirms **no** deep-import of `@metaswarm-dashboard/collector` internals
-  (anti-goal §12.10); coverage met (the live scan is fs-injected for tests);
-  build/typecheck/test/lint green.
+- **DoD:** endpoint tests via Fastify `app.inject` covering **all three**
+  GET endpoints — `/api/sessions` + `/api/sessions/:project/:sessionId`
+  (success, `400` malformed-project, `404`, the cache, traversal rejection),
+  AND `/api/calibration` (success shape `{summary: CalibrationSummary}`; the
+  **no-ratings** empty state; `na`/`unsure` verdicts excluded from
+  agree/disagree and counted separately; the `N≥5` per-KPI sample floor —
+  all derived server-side). The config loader is consumed via
+  `@metaswarm-dashboard/types/config` — a grep confirms **no** deep-import of
+  `@metaswarm-dashboard/collector` internals (anti-goal §12.10); coverage met
+  (the live scan is fs-injected for tests); build/typecheck/test/lint green.
 - **deps:** v4-1, v4-3, v4-4.
 
 ### v4-6 — Server write API  **[HUMAN CHECKPOINT]**
@@ -133,7 +137,13 @@ Format per WU: **spec** (design ref) · **file scope** · **DoD** · **deps**.
   rating` — body `{verdicts, overallNote?}` only; the server **re-derives**
   `rubricAtRating`. New `writeSessionRating(rating, dataDir, fs?)` (a sibling
   of WU-5's writer reusing `sanitizeSegment`/`assertPathWithinRoot`/
-  `atomicWriteJson`). Re-scope `packages/server/src/plugins/method-guard.ts`:
+  `atomicWriteJson`). The rating file is **day-independent** —
+  `<dataDir>/projects/<name>/sessions/ratings/<sessionId>.rating.json`, keyed
+  by `(project, sessionId)` only — so a re-rate **upserts (overwrites)** the
+  single file. (This corrects design §13's day-keyed `<YYYY-MM-DD>/` path: a
+  snapshot is a point-in-time artifact, but a rating is mutable operator
+  state and must not be day-bucketed, else a cross-day re-rate would leave
+  two files for one session.) Re-scope `packages/server/src/plugins/method-guard.ts`:
   it continues to allow `GET` and `HEAD` (the existing pass-through MUST be
   preserved) and now also allows exactly the one write route via an
   exact-match allow-list — rejecting extra segments, query strings, trailing
@@ -152,7 +162,9 @@ Format per WU: **spec** (design ref) · **file scope** · **DoD** · **deps**.
   (`.../rating/`, `.../rating?x=1`, case variants, extra segments,
   `POST`/`DELETE` on the route) are all tested; `415`/`413`/
   fail-closed-origin tested; `writeSessionRating` tested (sanitization,
-  containment, atomic); build/typecheck/test/lint green; coverage met.
+  containment, atomic, and **idempotent upsert — writing a rating for the
+  same `(project, sessionId)` twice resolves to a single file, no duplicate,
+  no calendar-day dependence**); build/typecheck/test/lint green; coverage met.
   **Human checkpoint** after COMMIT — first write surface, security-critical.
 - **deps:** v4-1, v4-5.
 
