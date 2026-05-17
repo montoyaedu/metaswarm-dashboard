@@ -12,18 +12,6 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
-    },
-    "./cli/audit": {
-      "types": "./dist/cli/audit.d.ts",
-      "import": "./dist/cli/audit.js"
-    },
-    "./cli/timeline": {
-      "types": "./dist/cli/timeline.d.ts",
-      "import": "./dist/cli/timeline.js"
-    },
-    "./cli/tail": {
-      "types": "./dist/cli/tail.d.ts",
-      "import": "./dist/cli/tail.js"
     }
   },
   "files": [

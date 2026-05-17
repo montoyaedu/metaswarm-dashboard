@@ -39,12 +39,15 @@ describe('rubric golden master', () => {
     expect(() => ProcessRubricScore.parse(golden)).not.toThrow();
   });
 
-  it('the synthetic session scores overall watch with one na item', () => {
-    // overall is `watch`: the synthetic fixture contains one genuine thrash
-    // episode (two Edits of src/parser.ts 3s apart, no intervening read), so
-    // the `thrashing` item is `watch`; cross-reference is the lone `na`.
+  it('the synthetic session scores overall pass with one na item', () => {
+    // overall is `pass` under the v4 rules (design §5): the synthetic
+    // fixture's only same-file Edit cluster is two Edits of src/parser.ts 3s
+    // apart — a run of 2, below the ≥3-edit thrash-run bar — so `thrashing`
+    // is `pass`; the two tool-errors each got a non-retry corrective
+    // response so `error-handling` is `pass`; cross-reference is the lone
+    // `na`. `overall` is INFORMATIONAL ONLY — not a gate (design §5).
     const result = scoreTimeline(parseTranscript(transcriptPath), FIXED_NOW);
-    expect(result.overall).toBe('watch');
+    expect(result.overall).toBe('pass');
     expect(result.items.filter((i) => i.verdict === 'na')).toHaveLength(1);
   });
 });

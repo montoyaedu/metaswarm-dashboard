@@ -1,28 +1,30 @@
-// thrashing scorer (sessions-spike WU-4, design §7).
+// thrashing scorer (sessions-spike WU-4, design §5 — v4 rewrite).
 //
-// Signal: a thrash "episode" is a pair of CONSECUTIVE `Edit` tool-use events
-// — consecutive within the Edit subsequence, i.e. `eB` is the next `Edit`
-// after `eA` regardless of how many `tool-result` / `assistant-text` /
-// `thinking` / other-tool events sit between them — that ALL hold:
-//   - `eA` and `eB` target the SAME file path (their `summary`);
-//   - they are less than 5000 ms apart;
-//   - there is NO `Read` tool-use of that SAME path anywhere between them in
-//     the full event stream (a same-file Read means the agent investigated,
-//     so it is not thrashing).
-// This is the correct reading of design §7's "edit-retry-edit loop on the
-// same file without diagnostic reads in between": in a real transcript every
-// `tool-use` is immediately followed by its `tool-result`, so two `Edit`s are
-// never LITERALLY adjacent in `events` — episode detection must therefore
-// look at consecutive Edits within the Edit subsequence, not at literal
-// `events[i]`/`events[i+1]` pairs. Interleaved tool-results, text, thinking,
-// other tools, and other-file Reads do NOT break an episode.
+// v3's rule counted every adjacent same-file `<5s` `Edit` *pair* as an
+// "episode" and fired `watch` at a single pair — so normal "edit section A
+// then edit section B of the same file" tripped it (WU-4.5 calibration
+// finding: thrashing fired on competent sessions).
 //
-// Verdict: 0 episodes -> pass; 1-3 -> watch; >=4 -> fail. No `na` branch.
+// v4 rule (design §5): a **thrash run** is a maximal run of **≥3** `Edit`
+// tool-use events that ALL target the SAME file path, where
+//   - each `Edit` is `< 5000 ms` after the previous `Edit` of the run; AND
+//   - there is NO `Read` tool-use of that SAME path between two consecutive
+//     edits of the run.
+// "Consecutive" is within the `Edit` subsequence: in a real transcript every
+// `tool-use` is followed by its `tool-result`, so two `Edit`s are never
+// LITERALLY adjacent in `events` — interleaved tool-results / text /
+// thinking / other tools / other-file Reads do NOT break a run.
+//
+// A same-file `Read`, or a ≥5s gap, between two consecutive edits breaks the
+// run there; the run is split and a new run may start at the next edit. A
+// run of length ≥3 (after splitting) counts as one thrash run.
+//
+// Verdict on the run count: `0`→pass · `1`→watch · `≥2`→fail. No `na`.
 //
 // FOLLOW-UP: design §7's signal also names "consecutive Bash calls differing
 // only in trivial flags" as a thrashing variant. That heuristic is NOT
 // implemented in this spike — it needs a robust shell-arg diff and risks
-// false positives. WU-7 should open a follow-up bead to add it.
+// false positives.
 
 import type {
   RubricItem,
@@ -33,6 +35,7 @@ import type {
 import { isToolUse } from './util.js';
 
 const THRASH_GAP_MS = 5000;
+const THRASH_RUN_MIN_EDITS = 3;
 
 /** An `Edit` tool-use event tagged with its index in the full event stream. */
 interface IndexedEdit {
@@ -40,27 +43,26 @@ interface IndexedEdit {
   index: number;
 }
 
-/** Adjacent `(prev, curr)` pairs within the `Edit` subsequence — `curr` is
- *  the next `Edit` after `prev`, however many non-Edit events sit between
- *  them. Built with a `prev` accumulator so both members are statically
- *  non-undefined (no indexed-access guard needed). */
-function adjacentEditPairs(
-  events: readonly ToolUseEvent[],
-): Array<{ prev: IndexedEdit; curr: IndexedEdit }> {
-  const pairs: Array<{ prev: IndexedEdit; curr: IndexedEdit }> = [];
-  let prev: IndexedEdit | null = null;
+/** A detected thrash run — for evidence/pointer reporting. The `pointerIndex`
+ *  is the stream index of the run's SECOND edit (the first point where the
+ *  run becomes visible). */
+interface ThrashRun {
+  path: string;
+  pointerIndex: number;
+}
+
+/** All `Edit` tool-use events tagged with their stream index, in order. */
+function indexedEdits(events: readonly ToolUseEvent[]): IndexedEdit[] {
+  const edits: IndexedEdit[] = [];
   events.forEach((event, index) => {
-    if (!isToolUse(event, 'Edit')) return;
-    const curr: IndexedEdit = { event, index };
-    if (prev !== null) pairs.push({ prev, curr });
-    prev = curr;
+    if (isToolUse(event, 'Edit')) edits.push({ event, index });
   });
-  return pairs;
+  return edits;
 }
 
 /** True iff a `Read` tool-use of `path` appears in `events` strictly between
  *  the stream indices `(fromIndex, toIndex)`. A same-file Read means the
- *  agent investigated, which breaks an otherwise-thrashing Edit pair. */
+ *  agent investigated, which breaks an otherwise-thrashing run. */
 function hasInterveningReadOfPath(
   events: readonly ToolUseEvent[],
   fromIndex: number,
@@ -72,35 +74,67 @@ function hasInterveningReadOfPath(
     .some((event) => isToolUse(event, 'Read') && event.summary === path);
 }
 
-export function scoreThrashing(timeline: SessionTimeline): RubricItem {
-  let episodes = 0;
-  let firstEpisode: { path: string; secondIndex: number } | undefined;
+/** True iff `curr` continues the run anchored on `prev`: same file path,
+ *  `< THRASH_GAP_MS` apart, and no intervening same-file `Read`. */
+function continuesRun(
+  events: readonly ToolUseEvent[],
+  prev: IndexedEdit,
+  curr: IndexedEdit,
+): boolean {
+  if (prev.event.summary !== curr.event.summary) return false;
+  const gap = Date.parse(curr.event.at) - Date.parse(prev.event.at);
+  if (gap >= THRASH_GAP_MS) return false;
+  return !hasInterveningReadOfPath(events, prev.index, curr.index, curr.event.summary);
+}
 
-  for (const { prev, curr } of adjacentEditPairs(timeline.events)) {
-    if (prev.event.summary !== curr.event.summary) continue;
-    const gap = Date.parse(curr.event.at) - Date.parse(prev.event.at);
-    if (gap >= THRASH_GAP_MS) continue;
-    if (
-      hasInterveningReadOfPath(timeline.events, prev.index, curr.index, curr.event.summary)
-    ) {
-      continue;
+export function scoreThrashing(timeline: SessionTimeline): RubricItem {
+  const edits = indexedEdits(timeline.events);
+  const runs: ThrashRun[] = [];
+
+  // Walk the Edit subsequence with a `prev` accumulator, growing a maximal
+  // same-file run. `runLength` counts the edits of the run in progress. The
+  // run becomes a thrash run the moment `runLength` reaches the ≥3-edit bar
+  // — and at that exact iteration `prev` is the run's SECOND edit (non-null,
+  // because reaching length 3 means we are inside the `continuesRun`
+  // branch). The whole run shares one file path (`continuesRun` requires
+  // equal `summary`), so `prev.event.summary` is the run's path and
+  // `prev.index` its second-edit pointer. Each run contributes at most one
+  // `ThrashRun`, recorded only on the 2→3 transition; further growth of an
+  // already-counted run changes nothing.
+  let prev: IndexedEdit | null = null;
+  let runLength = 0;
+
+  for (const curr of edits) {
+    if (prev !== null && continuesRun(timeline.events, prev, curr)) {
+      // `curr` extends the current run.
+      runLength += 1;
+      // The 2→3 transition: the run just crossed the thrash bar. `prev` is
+      // the run's second edit — its path and index describe the run.
+      if (runLength === THRASH_RUN_MIN_EDITS) {
+        runs.push({ path: prev.event.summary, pointerIndex: prev.index });
+      }
+    } else {
+      // `curr` starts a fresh run of length 1.
+      runLength = 1;
     }
-    episodes += 1;
-    firstEpisode ??= { path: curr.event.summary, secondIndex: curr.index };
+    prev = curr;
   }
 
-  const verdict = episodes === 0 ? 'pass' : episodes <= 3 ? 'watch' : 'fail';
+  const runCount = runs.length;
+  const verdict = runCount === 0 ? 'pass' : runCount === 1 ? 'watch' : 'fail';
+  const firstRun = runs[0];
   const evidence =
-    firstEpisode === undefined
-      ? '0 thrash episodes'
-      : `${episodes} thrash episode${episodes === 1 ? '' : 's'} ` +
-        `(consecutive Edit on ${firstEpisode.path} <5s, no intervening read)`;
+    firstRun === undefined
+      ? '0 thrash runs'
+      : `${runCount} thrash run${runCount === 1 ? '' : 's'} ` +
+        `(≥3 Edits on ${firstRun.path} <5s apart, no intervening read)`;
+
   return {
     key: 'thrashing',
     label: 'No thrashing',
     verdict,
     evidence,
     pointer:
-      firstEpisode === undefined ? null : { kind: 'index', value: firstEpisode.secondIndex },
+      firstRun === undefined ? null : { kind: 'index', value: firstRun.pointerIndex },
   };
 }

@@ -40,12 +40,9 @@
     {
       "key": "thrashing",
       "label": "No thrashing",
-      "verdict": "watch",
-      "evidence": "1 thrash episode (consecutive Edit on src/parser.ts <5s, no intervening read)",
-      "pointer": {
-        "kind": "index",
-        "value": 48
-      }
+      "verdict": "pass",
+      "evidence": "0 thrash runs",
+      "pointer": null
     },
     {
       "key": "cross-reference",
@@ -79,5 +76,5 @@
       "pointer": null
     }
   ],
-  "overall": "watch"
+  "overall": "pass"
 }

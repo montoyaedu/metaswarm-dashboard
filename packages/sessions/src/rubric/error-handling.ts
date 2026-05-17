@@ -1,25 +1,61 @@
-// error-handling scorer (sessions-spike WU-4, design §7).
+// error-handling scorer (sessions-spike WU-4, design §5 — v4 rewrite).
 //
-// Signal: tool errors followed by a corrective response — either a
-// Read/Grep within <=2 events, or an assistant-text in the very next event.
-// Verdict: handledRatio >=0.8 -> pass; 0.5 <= ratio < 0.8 -> watch;
-// ratio < 0.5 -> fail; zero errors -> na.
+// v3's rule scored a `tool-error` as "handled" only when events[i+1..i+2]
+// was a Read/Grep tool-use or an `assistant-text` — a diagnostic `Bash`
+// (`git status`, `ls`) was scored as unhandled, so competent sessions that
+// investigated via the shell wrongly failed (WU-4.5 calibration finding).
+//
+// v4 single complementary definition (design §5): for each `tool-error` at
+// stream index `i`, the **errored call** is the nearest preceding `tool-use`
+// event (index < i). The error is **unhandled** iff EITHER
+//   - `events[i+1]` exists and is a `tool-use` whose `(toolName, summary)`
+//     equals the errored call's `(toolName, summary)` — a blind identical
+//     retry; OR
+//   - no event follows `i` — the session ended on the error.
+// The error is **handled** in every other case. `handled ≡ NOT unhandled`,
+// complementary by construction: every error is classified exactly once.
+//
+// The comparison uses only the `ToolUseEvent` `(toolName, summary)` fields —
+// the parser retains nothing else, so there are no raw call bytes to diff.
+// LIMITATION: `summary` is truncated to ≤200 chars (design §6 / the
+// `ToolUseEvent` schema). Two genuinely distinct calls whose first 200 chars
+// coincide compare as equal and a real retry-vs-not distinction is lost.
+// Accepted: the rubric is an advisory hint, not an oracle (design §5).
+//
+// Verdict on handled/total ratio: `≥0.8`→pass · `0.5 ≤ r < 0.8`→watch ·
+// `<0.5`→fail · 0 `tool-error`s→na.
 
-import type { RubricItem, SessionTimeline } from '@metaswarm-dashboard/types/sessions';
+import type { RubricItem, SessionTimeline, ToolUseEvent } from '@metaswarm-dashboard/types/sessions';
 
-import { isToolUse } from './util.js';
+const HANDLED_PASS_RATIO = 0.8;
+const HANDLED_WATCH_RATIO = 0.5;
 
-/** True iff the event at `events[i]` (a tool-error) is "handled" — followed
- *  by a corrective Read/Grep within events[i+1]/events[i+2], OR an
- *  assistant-text directly at events[i+1]. */
-function isHandled(events: SessionTimeline['events'], i: number): boolean {
-  const next = events[i + 1];
-  if (next !== undefined && next.kind === 'assistant-text') return true;
-  for (const j of [i + 1, i + 2]) {
+/** The nearest preceding `tool-use` event before stream index `i`, or
+ *  `undefined` when no `tool-use` precedes the error (e.g. the error is the
+ *  first event). */
+function erroredCall(
+  events: SessionTimeline['events'],
+  i: number,
+): ToolUseEvent | undefined {
+  for (let j = i - 1; j >= 0; j -= 1) {
     const e = events[j];
-    if (e !== undefined && (isToolUse(e, 'Read') || isToolUse(e, 'Grep'))) return true;
+    if (e !== undefined && e.kind === 'tool-use') return e;
   }
-  return false;
+  return undefined;
+}
+
+/** True iff the `tool-error` at `events[i]` is "unhandled": the next event is
+ *  a blind identical retry of the errored call, or the session ended on the
+ *  error. Handled is the exact complement. */
+function isUnhandled(events: SessionTimeline['events'], i: number): boolean {
+  const next = events[i + 1];
+  // Session ended on the error — no corrective response possible.
+  if (next === undefined) return true;
+  // A blind identical retry: the next event repeats the errored call.
+  if (next.kind !== 'tool-use') return false;
+  const errored = erroredCall(events, i);
+  if (errored === undefined) return false;
+  return next.toolName === errored.toolName && next.summary === errored.summary;
 }
 
 export function scoreErrorHandling(timeline: SessionTimeline): RubricItem {
@@ -39,10 +75,11 @@ export function scoreErrorHandling(timeline: SessionTimeline): RubricItem {
     };
   }
 
-  const unhandled = errorIndices.filter((i) => !isHandled(events, i));
+  const unhandled = errorIndices.filter((i) => isUnhandled(events, i));
   const handledCount = errorIndices.length - unhandled.length;
   const ratio = handledCount / errorIndices.length;
-  const verdict = ratio >= 0.8 ? 'pass' : ratio >= 0.5 ? 'watch' : 'fail';
+  const verdict =
+    ratio >= HANDLED_PASS_RATIO ? 'pass' : ratio >= HANDLED_WATCH_RATIO ? 'watch' : 'fail';
 
   // `pass` carries no pointer. On `watch`/`fail` the ratio is < 0.8, so at
   // least one error is unhandled — `firstUnhandled` is then a number.

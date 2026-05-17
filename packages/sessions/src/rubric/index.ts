@@ -39,7 +39,13 @@ const SCORERS: ReadonlyArray<(timeline: SessionTimeline) => RubricItem> = [
 ];
 
 /** Aggregate per design §7.2: `fail` if any verdict is fail; else `watch`
- *  if any is watch; else `pass` if any is pass; else (all `na`) `na`. */
+ *  if any is watch; else `pass` if any is pass; else (all `na`) `na`.
+ *
+ *  v4 (design §5): this feeds `ProcessRubricScore.overall`, which is
+ *  **INFORMATIONAL ONLY — not a gate**. The rubric is an advisory
+ *  suggestion; the operator's per-KPI ratings are the ground truth. WU-4.5's
+ *  calibration found a fixed rule set cannot be the oracle, so `overall` is
+ *  computed and displayed but never blocks or decides anything. */
 export function aggregateVerdict(verdicts: readonly RubricVerdict[]): RubricVerdict {
   if (verdicts.includes('fail')) return 'fail';
   if (verdicts.includes('watch')) return 'watch';
@@ -57,6 +63,8 @@ export function scoreTimeline(
     sessionId: timeline.sessionId,
     scoredAt: now.toISOString(),
     items,
+    // `overall` is INFORMATIONAL ONLY — not a gate (design §5). It is
+    // computed and surfaced as a hint; it never blocks or decides anything.
     overall: aggregateVerdict(items.map((i) => i.verdict)),
   };
 }
