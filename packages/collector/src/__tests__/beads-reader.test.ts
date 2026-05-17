@@ -124,6 +124,49 @@ describe('readHostBeads', () => {
     expect(out.warnings.some((w) => w.includes('bd list --json failed'))).toBe(true);
   });
 
+  it('reads cleanly from a .beads/ dir that has no issues.jsonl file', async () => {
+    // The `.beads/` directory exists but issues.jsonl is absent: the
+    // jsonl-parsing block is skipped and rows come only from `bd list`.
+    const fakeFs = {
+      existsSync: (p: string): boolean =>
+        p.endsWith('host') || p.endsWith('.beads'),
+      readFileSync: (): string => '',
+    };
+    const out = await readHostBeads('/synthetic/host', {
+      execute: async () =>
+        Promise.resolve({ stdout: JSON.stringify([{ id: 'live-1', status: 'open' }]) }),
+      fs: fakeFs as unknown as { existsSync: typeof existsSync; readFileSync: typeof readFileSync },
+    });
+    expect(out.skipped).toBe(false);
+    expect(out.warnings).toEqual([]);
+    expect(out.rows).toEqual([{ id: 'live-1', status: 'open' }]);
+  });
+
+  it('warns with String(err) when a bd error carries no message', async () => {
+    // An Error whose `message` is undefined exercises the
+    // `error.message ?? String(err)` fallback in the generic-error branch.
+    // (Real-world: opaque rejections that cross the execFile boundary can
+    // lose their message; the reader must still surface *something*.)
+    class MessagelessError extends Error {
+      constructor() {
+        super();
+        // Drop the inherited string `message` so it reads back as undefined.
+        Object.defineProperty(this, 'message', { value: undefined });
+      }
+      override toString(): string {
+        return 'opaque bd failure';
+      }
+    }
+    const exec: BeadsExecutor = () => Promise.reject(new MessagelessError());
+    const out = await readHostBeads(join(FIXTURES, 'mixed-tasks'), {
+      execute: exec,
+      fs: { existsSync, readFileSync },
+    });
+    expect(
+      out.warnings.some((w) => w.includes('bd list --json failed: opaque bd failure')),
+    ).toBe(true);
+  });
+
   it('warns when reading issues.jsonl fails for a non-ENOENT reason', async () => {
     const fakeFs = {
       existsSync: (p: string): boolean => p.endsWith('mixed-tasks') || p.endsWith('.beads') || p.endsWith('issues.jsonl'),

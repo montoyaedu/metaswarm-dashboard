@@ -1,11 +1,14 @@
 // WU-2.1, WU-2.2, WU-2.3 — paths resolution + ~ expansion + XDG override.
 
+import { homedir } from 'node:os';
+
 import { describe, expect, it } from 'vitest';
 
 import {
   PathExpansionError,
   configFile,
   dataDir,
+  defaultEnv,
   expandHome,
   type PathsEnv,
 } from '../paths.js';
@@ -89,6 +92,22 @@ describe('paths.configFile', () => {
         ),
       ).toBe('/custom/path/config.yaml');
     }
+  });
+});
+
+describe('paths.defaultEnv', () => {
+  it('reflects the live process platform, real home dir, and process.env', () => {
+    const e = defaultEnv();
+    expect(e.platform).toBe(process.platform);
+    expect(e.homeDir).toBe(homedir());
+    expect(e.env).toBe(process.env);
+  });
+
+  it('is the default for dataDir/configFile (no-arg calls resolve a non-empty path)', () => {
+    // The no-arg overloads fall back to defaultEnv(); resolution must not
+    // throw and must yield a non-empty path string.
+    expect(dataDir().length).toBeGreaterThan(0);
+    expect(configFile().length).toBeGreaterThan(0);
   });
 });
 

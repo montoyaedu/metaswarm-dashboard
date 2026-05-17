@@ -102,4 +102,84 @@ describe('SnapshotReader uncovered branches', () => {
     const r = new SnapshotReader('/x', fs as never);
     expect(r.listProjects()).toEqual([]);
   });
+
+  it('listProjects: skips a project whose daily/ directory does not exist', () => {
+    // The project sub-dir exists but has no `daily/` child → `continue`.
+    const fs = {
+      existsSync: (p: string): boolean => !p.endsWith('daily'),
+      readFileSync: () => '',
+      readdirSync: (): string[] => ['proj-without-daily'],
+      statSync: () => ({}) as never,
+    };
+    const r = new SnapshotReader('/x', fs as never);
+    expect(r.listProjects()).toEqual([]);
+  });
+
+  it('listProjects: omits a project whose daily/ has no YYYY-MM-DD files', () => {
+    // daily/ exists and reads fine, but nothing matches the date regex →
+    // the `.some(DAILY_FILE_RE.test)` guard is false, project is skipped.
+    const fs = {
+      existsSync: () => true,
+      readFileSync: () => '',
+      readdirSync: (): string[] => ['proj-a'],
+      statSync: () => ({}) as never,
+    };
+    // First readdir returns the project list, the second returns non-date files.
+    let call = 0;
+    fs.readdirSync = (): string[] => {
+      call += 1;
+      return call === 1 ? ['proj-a'] : ['README.md', 'notes.txt'];
+    };
+    const r = new SnapshotReader('/x', fs as never);
+    expect(r.listProjects()).toEqual([]);
+  });
+
+  it('latestDaily: returns null when daily/ exists but has no YYYY-MM-DD files', () => {
+    // dailyKeys is empty after filtering → the length-0 guard returns null.
+    const fs = {
+      existsSync: () => true,
+      readFileSync: () => '',
+      readdirSync: (): string[] => ['README.md', 'index.html'],
+      statSync: () => ({}) as never,
+    };
+    const r = new SnapshotReader('/x', fs as never, () => undefined);
+    expect(r.latestDaily('foo')).toBeNull();
+  });
+
+  it('recentDaily: drops daily files that fail to parse, keeps the valid ones', () => {
+    // Two date-named files exist; the newer one is corrupt JSON (readDaily
+    // returns null) so the `snap !== null` guard skips it, the older valid
+    // one is kept.
+    const valid = JSON.stringify({
+      schemaVersion: 1,
+      projectName: 'foo',
+      projectPath: '/p/foo',
+      category: 'metaswarm',
+      generatedAt: '2026-05-05T00:00:00.000Z',
+      dayKey: '2026-05-05',
+      agents: [],
+      totals: {
+        totalActiveTasks: 0,
+        totalBlockedTasks: 0,
+        totalCompletedTasksLast7d: 0,
+        lastActivityAt: null,
+      },
+      prsMergedLast7d: null,
+      collectionStatus: 'ok',
+      collectionWarnings: [],
+    });
+    const fs = {
+      existsSync: () => true,
+      readFileSync: (p: string): string =>
+        p.endsWith('2026-05-06.json') ? '{ corrupt' : valid,
+      readdirSync: (): string[] => ['2026-05-05.json', '2026-05-06.json'],
+      statSync: () => ({}) as never,
+    };
+    const logs: string[] = [];
+    const r = new SnapshotReader('/x', fs as never, (m) => logs.push(m));
+    const recent = r.recentDaily('foo', 10);
+    expect(recent).toHaveLength(1);
+    expect(recent[0]?.dayKey).toBe('2026-05-05');
+    expect(logs.some((l) => l.includes('invalid JSON'))).toBe(true);
+  });
 });
