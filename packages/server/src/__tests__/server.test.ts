@@ -70,6 +70,21 @@ describe('GET /api/projects/:name', () => {
   });
 });
 
+describe('GET /api/calibration — default wiring', () => {
+  it('returns a valid empty summary when buildServer resolves its own deps', async () => {
+    // No `sessions` / `now` injected → server.ts resolves the config + paths
+    // from the env and uses its default `now()`. The fixture DATA_DIR has no
+    // `sessions/ratings/` tree, so the summary is the empty/no-ratings state.
+    const app = await buildServer({ dataDir: DATA_DIR, staticRoot: STATIC_ROOT });
+    const res = await app.inject({ method: 'GET', url: '/api/calibration' });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.summary.ratedSessionCount).toBe(0);
+    expect(body.summary.perKpi).toHaveLength(9);
+    await app.close();
+  });
+});
+
 describe('GET /api/agents', () => {
   it('returns 200 + AgentAggregate[] across both fixture projects', async () => {
     const app = await makeApp();

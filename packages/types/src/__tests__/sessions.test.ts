@@ -11,6 +11,7 @@ import {
   RubricPointer,
   RubricVerdict,
   SessionSnapshot,
+  SessionSummary,
   SessionTimeline,
   ToolUseEvent,
   ToolUseEventKind,
@@ -80,6 +81,15 @@ const validSnapshot = {
   rubric: validRubricScore,
 };
 
+const validSummary = {
+  projectName: 'metaswarm-dashboard',
+  sessionId: 'session-1',
+  startedAt: '2026-05-17T11:59:00.000Z',
+  lastEventAt: '2026-05-17T12:00:00.000Z',
+  eventCount: 1,
+  rated: false,
+};
+
 // --- valid round-trips -----------------------------------------------------
 
 describe('valid round-trips', () => {
@@ -122,6 +132,56 @@ describe('valid round-trips', () => {
     if (result.success) {
       expect(result.data).toEqual(validSnapshot);
     }
+  });
+
+  it('SessionSummary parses and round-trips', () => {
+    const result = SessionSummary.safeParse(validSummary);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data).toEqual(validSummary);
+    }
+  });
+});
+
+// --- SessionSummary field constraints --------------------------------------
+
+describe('SessionSummary field constraints', () => {
+  it('parses a summary with rated=true', () => {
+    const result = SessionSummary.safeParse({ ...validSummary, rated: true });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects an empty projectName', () => {
+    const result = SessionSummary.safeParse({ ...validSummary, projectName: '' });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects an empty sessionId', () => {
+    const result = SessionSummary.safeParse({ ...validSummary, sessionId: '' });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects a negative eventCount', () => {
+    const result = SessionSummary.safeParse({ ...validSummary, eventCount: -1 });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects a non-integer eventCount', () => {
+    const result = SessionSummary.safeParse({ ...validSummary, eventCount: 1.5 });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects a lastEventAt carrying a timezone offset', () => {
+    const result = SessionSummary.safeParse({
+      ...validSummary,
+      lastEventAt: '2026-05-17T12:00:00.000+02:00',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects a non-boolean rated', () => {
+    const result = SessionSummary.safeParse({ ...validSummary, rated: 'yes' });
+    expect(result.success).toBe(false);
   });
 });
 

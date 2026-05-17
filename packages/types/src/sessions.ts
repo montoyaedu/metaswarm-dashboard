@@ -93,6 +93,25 @@ export const ProcessRubricScore = z.object({
 });
 export type ProcessRubricScore = z.infer<typeof ProcessRubricScore>;
 
+/**
+ * A list-row projection of a discovered session, surfaced by
+ * `GET /api/sessions` (design §7). It carries no rubric verdict — the list
+ * view shows only identity + activity + a `rated` flag (design §6.2). The
+ * full timeline + rubric are fetched on demand by the detail endpoint.
+ */
+export const SessionSummary = z.object({
+  /** The `config.yaml` project name the session's transcript belongs to. */
+  projectName: z.string().min(1),
+  /** The `.jsonl` basename (extension removed) — the route's `:sessionId`. */
+  sessionId: z.string().min(1),
+  startedAt: z.string().datetime({ offset: false }),
+  lastEventAt: z.string().datetime({ offset: false }),
+  eventCount: z.number().int().nonnegative(),
+  /** True iff a persisted `SessionRating` exists for this session. */
+  rated: z.boolean(),
+});
+export type SessionSummary = z.infer<typeof SessionSummary>;
+
 export const SessionSnapshot = z.object({
   schemaVersion: z.literal(1),
   projectName: z.string().min(1),
