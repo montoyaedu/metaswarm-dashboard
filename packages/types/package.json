@@ -29,6 +29,10 @@
       "types": "./dist/fs-utils.d.ts",
       "import": "./dist/fs-utils.js"
     },
+    "./config": {
+      "types": "./dist/config.d.ts",
+      "import": "./dist/config.js"
+    },
     "./ratings": {
       "types": "./dist/ratings.d.ts",
       "import": "./dist/ratings.js"
@@ -47,6 +51,10 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "js-yaml": "^4.1.0",
     "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9"
   }
 }

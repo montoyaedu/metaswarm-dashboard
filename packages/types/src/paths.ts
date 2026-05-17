@@ -47,6 +47,24 @@ export function dataDir(env: PathsEnv = defaultEnv()): string {
 }
 
 /**
+ * Resolve the directory holding Claude Code session transcript files.
+ *
+ * Precedence:
+ *   1. `METASWARM_DASHBOARD_TRANSCRIPTS_DIR` env var (if set).
+ *   2. `~/.claude/projects` (the default Claude Code transcript location).
+ *
+ * The default is platform-independent — Claude Code writes transcripts under
+ * `~/.claude/projects` on every OS.
+ */
+export function transcriptsDir(env: PathsEnv = defaultEnv()): string {
+  const override = env.env.METASWARM_DASHBOARD_TRANSCRIPTS_DIR;
+  if (override !== undefined && override !== '') {
+    return expandHome(override, env.homeDir);
+  }
+  return join(env.homeDir, '.claude', 'projects');
+}
+
+/**
  * Resolve the dashboard config file path.
  *
  * Precedence:

@@ -1,6 +1,8 @@
 // WU-2.1, WU-2.2, WU-2.3 — paths resolution + ~ expansion + XDG override.
+// sessions-spike WU v4-2 — extends with `transcriptsDir` (plan §v4-2).
 
 import { homedir } from 'node:os';
+import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
@@ -10,6 +12,7 @@ import {
   dataDir,
   defaultEnv,
   expandHome,
+  transcriptsDir,
   type PathsEnv,
 } from '../paths.js';
 
@@ -108,6 +111,42 @@ describe('paths.defaultEnv', () => {
     // throw and must yield a non-empty path string.
     expect(dataDir().length).toBeGreaterThan(0);
     expect(configFile().length).toBeGreaterThan(0);
+  });
+});
+
+describe('paths.transcriptsDir', () => {
+  it('defaults to ~/.claude/projects on every platform', () => {
+    for (const platform of ['darwin', 'linux', 'freebsd'] as const) {
+      expect(transcriptsDir(env(platform))).toBe(
+        join(HOME, '.claude', 'projects'),
+      );
+    }
+  });
+
+  it('METASWARM_DASHBOARD_TRANSCRIPTS_DIR override wins on every platform', () => {
+    for (const platform of ['darwin', 'linux'] as const) {
+      expect(
+        transcriptsDir(
+          env(platform, { METASWARM_DASHBOARD_TRANSCRIPTS_DIR: '/custom/transcripts' }),
+        ),
+      ).toBe('/custom/transcripts');
+    }
+  });
+
+  it('ignores an empty-string override and falls back to the default', () => {
+    expect(
+      transcriptsDir(env('linux', { METASWARM_DASHBOARD_TRANSCRIPTS_DIR: '' })),
+    ).toBe(join(HOME, '.claude', 'projects'));
+  });
+
+  it('expands ~ in the override via the home dir', () => {
+    expect(
+      transcriptsDir(env('linux', { METASWARM_DASHBOARD_TRANSCRIPTS_DIR: '~/custom-tx' })),
+    ).toBe(join(HOME, 'custom-tx'));
+  });
+
+  it('falls back to defaultEnv() when called with no argument', () => {
+    expect(transcriptsDir().length).toBeGreaterThan(0);
   });
 });
 
