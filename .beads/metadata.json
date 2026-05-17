@@ -1,10 +1,7 @@
 {
   "database": "dolt",
   "backend": "dolt",
-  "dolt_mode": "server",
-  "dolt_server_host": "127.0.0.1",
-  "dolt_server_port": 3307,
-  "dolt_server_user": "root",
+  "dolt_mode": "embedded",
   "dolt_database": "metaswarm_dashboard",
-  "project_id": "73b401f4-9208-40d8-9a0b-6c251df1e624"
+  "project_id": "32acdd0c-27d2-4f3c-af1d-e241f944dbb3"
 }

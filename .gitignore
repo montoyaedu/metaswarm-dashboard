@@ -14,3 +14,7 @@ coverage/
 # Do NOT exclude .beads/plans/, .beads/context/, .beads/knowledge/, or .beads/issues.jsonl
 # from this root .gitignore — those are the metaswarm workflow's portable, cross-machine
 # state and MUST be committed so other clones (and future you on a new laptop) can recover.
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+.beads-credential-key
