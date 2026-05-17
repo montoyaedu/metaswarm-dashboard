@@ -1,33 +1,36 @@
 # Execution State — sessions-spike
 
 ## Current Position
-- Active work unit: none — paused at the WU-4.5 calibration gate (needs operator input)
-- Current phase: —
-- Retry count: 0
-- Branch: `sessions-spike` (7 commits; NOT pushed — design anti-goal §12.7, operator pushes)
+- Phase: **design v4 APPROVED by the design-review gate (5/5, 3 rounds, 2026-05-17).**
+- Next: write the v4 implementation plan (decompose §9 WU-A..G into detailed
+  work units) → plan-review gate → operator picks execution method → build.
+- Branch: `sessions-spike` (NOT pushed — design anti-goal §12.7; operator pushes).
 
-## Work Unit Status
-| WU | Status | Phase | Notes |
-|----|--------|-------|-------|
-| WU-1 | COMPLETE | COMMITTED 3664778 | skeleton, PoC delete, atomicWriteJson lift, guards |
-| WU-2 | COMPLETE | COMMITTED 59369dc | Zod schemas in types/sessions |
-| WU-3 | COMPLETE | COMMITTED | jsonl-reader parser + synthetic fixture |
-| WU-4 | COMPLETE | COMMITTED | 9 rubric scorers + composer (thrashing fixed, retry 1/3) |
-| WU-5 | COMPLETE | COMMITTED | snapshot writer |
-| WU-4.5 | BLOCKED-ON-OPERATOR | — | calibration HARD GATE — needs 2 real labelled sessions |
-| WU-6 | PENDING | — | CLI subcommands; blocked by WU-4.5 |
-| WU-7 | PENDING | — | docs/follow-ups; blocked by WU-6 + bead 0nt |
-| WU-8 | PENDING | — | 2-week post-merge usage check; time-gated |
+## Done
+| Item | Status |
+|------|--------|
+| WU-1..WU-5 (v3) | COMPLETE — committed (skeleton, schemas, parser, 9 rubric scorers, snapshot writer) |
+| Coverage debt `metaswarm-dashboard-0nt` | CLOSED — `npm run test:coverage` exits 0 |
+| WU-4.5 calibration `metaswarm-dashboard-0ga` | CLOSED — §15.3 kill; superseded by design v4 |
+| Design v4 (`docs/design-sessions-spike-v4.md`) | APPROVED 5/5 by the design-review gate |
 
-## Blocked / Escalated
-- WU-4.5 (`metaswarm-dashboard-0ga`) is a HARD GATE before WU-6. Per design §9.4 it
-  requires the operator to select 2 real sibling-session transcripts (1 known-good,
-  1 known-drifted) and provide ground-truth verdicts for the 9 rubric criteria.
-  Cannot be done without operator input. WU-6, WU-7, WU-8 are all downstream — no
-  autonomous runway remains until calibration data is supplied.
+## Next — v4 implementation (design v4 §9, work-unit shape)
+- A: rubric → advisory + the 2 bug-fixes (error-handling, thrashing)
+- B: rating schemas in `@metaswarm-dashboard/types`
+- C: shared lifts (config loader + `transcriptsDir`) + session discovery + server read API
+- D: server write API + `method-guard.ts` re-scope
+- E: SPA Sessions list + detail/timeline + nav bar
+- F: SPA rating survey + calibration summary + eslint write-guard re-scope
+- G: integration test + docs + follow-up beads + the 2-week usage-check bead
 
-## Notes
-- Coverage debt bead `metaswarm-dashboard-0nt` CLOSED (commit 4701b35) — `npm run
-  test:coverage` now exits 0 (lines 100 / stmts 99.56 / funcs 98.82 / branches 98.24).
-- Every spike WU verified on a no-regression basis; all WU-1..5 own files at 100%.
-- Recovery: `bd prime`, read this file + project-context.md, `git log sessions-spike`.
+## Open follow-ups / housekeeping for the planning step
+- Stale v3 beads to close-as-superseded when the v4 plan is written:
+  `metaswarm-dashboard-vcr` (v3 WU-6), `-pkl` (v3 WU-7), `-9qo` (v3 WU-8).
+- Non-blocking gate suggestions to fold into the plan: method-guard exact-match
+  shape + test; WU-E no-`v-html` on transcript content; row-click nav;
+  min-1-verdict to save; the config.ts barrel decision; the error-handling
+  summary-truncation edge-case test fixture.
+
+## Recovery
+`bd prime`; read this file + `project-context.md` + `docs/design-sessions-spike-v4.md`;
+`git log sessions-spike`.
