@@ -23,9 +23,11 @@
 - WU-4.5 (`metaswarm-dashboard-0ga`) is a HARD GATE before WU-6. Per design §9.4 it
   requires the operator to select 2 real sibling-session transcripts (1 known-good,
   1 known-drifted) and provide ground-truth verdicts for the 9 rubric criteria.
-  Cannot be done without operator input — orchestrator paused here.
+  Cannot be done without operator input. WU-6, WU-7, WU-8 are all downstream — no
+  autonomous runway remains until calibration data is supplied.
 
 ## Notes
-- Coverage gate stays red on pre-existing baseline debt (bead metaswarm-dashboard-0nt).
-  Every spike WU verified on a no-regression basis; all WU-1..5 own files at 100%.
+- Coverage debt bead `metaswarm-dashboard-0nt` CLOSED (commit 4701b35) — `npm run
+  test:coverage` now exits 0 (lines 100 / stmts 99.56 / funcs 98.82 / branches 98.24).
+- Every spike WU verified on a no-regression basis; all WU-1..5 own files at 100%.
 - Recovery: `bd prime`, read this file + project-context.md, `git log sessions-spike`.
