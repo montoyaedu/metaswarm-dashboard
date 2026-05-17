@@ -52,7 +52,7 @@ WHO is always the single operator running Claude Code across many repos.
 - **SO THAT:** a criterion that systematically disagrees is identified and
   **retired** (§10), and a criterion that agrees is trusted more.
 - **WHEN:** periodically once ≥5 sessions are rated (small-N agreement is
-  noise — §5.4 enforces a sample-size floor).
+  noise — §6.4 and §10 enforce a sample-size floor).
 
 ### UC-3 — The session logbook (drives the Sessions list + timeline)
 - **WANTS:** to see, across all repos, which Claude Code sessions ran when,
@@ -109,6 +109,26 @@ gains `"@metaswarm-dashboard/sessions": "*"`. The dangling `./cli/audit`,
 `exports` (dist files that do not exist — the CLI is deferred) are removed in
 WU-A; only `.` remains.
 
+Two more shared modules the server needs are **lifted to
+`@metaswarm-dashboard/types`** `[gate-r2: ARCH-r2-B1, ARCH-r2-B2]` — the same
+pattern WU-1 used for `atomicWriteJson`:
+- **Config loader.** `:project` (§7) resolves a config.yaml project name to a
+  filesystem path. The loader (`loadConfig` + the `Config`/`ProjectEntry` Zod
+  schemas) lives in `packages/collector/src/config.ts` and is NOT on the
+  collector's `exports` map — the server importing it directly would be a
+  forbidden deep-import (anti-goal §12.10). WU-C lifts it to a new
+  `packages/types/src/config.ts` (re-exported from `index.ts`; new `./config`
+  entry in `packages/types/package.json` `exports`; `types` gains the
+  already-approved `js-yaml` dep). `packages/collector` re-imports from
+  `@metaswarm-dashboard/types/config` for back-compat — zero behaviour
+  change, all existing collector tests pass unchanged (mirrors the WU-1
+  `fs-utils` lift).
+- **Transcripts-dir resolver.** `METASWARM_DASHBOARD_TRANSCRIPTS_DIR` (v3
+  §8.5) and its resolver were never built — v3 stopped at WU-4.5.
+  `packages/types/src/paths.ts` exports only `dataDir()`/`configFile()`.
+  WU-C adds `transcriptsDir(env)` to `paths.ts` (default `~/.claude/
+  projects`, env override) with a test; it is already exported via `./paths`.
+
 ### 3.6 Data flow
 ```
 ~/.claude/projects/<encoded-cwd>/<sid>.jsonl   (read-only input)
@@ -135,7 +155,8 @@ No existing schema touched.
   `verdict: z.enum(['pass','watch','fail','na','unsure'])`,
   `note: z.string().max(500).optional()`, `ratedAt` ISO-8601.
 - **`SessionRating`** — `schemaVersion: 1`, `sessionId`, `projectName`,
-  `verdicts: OperatorVerdict[]` (0..N — partial ratings allowed),
+  `verdicts: OperatorVerdict[]` (0..9, partial ratings allowed, no duplicate
+  `key`s — Zod-enforced `.max(9)` + a refinement),
   `overallNote: z.string().max(2000).optional()`, `ratedAt`,
   `rubricAtRating: ProcessRubricScore`. **`rubricAtRating` is derived
   server-side**, not accepted from the client (§8) — it freezes the
@@ -155,7 +176,7 @@ flaws the calibration found are fixed with concrete, recorded thresholds
 
 | scorer | v3 rule (flawed) | v4 rule (pinned) |
 |---|---|---|
-| `error-handling` | a `tool-error` is "handled" only if events[i+1..i+2] is a Read/Grep tool-use or an `assistant-text` — a diagnostic `Bash` (`git status`, `ls`) scored as unhandled, so competent sessions failed | "handled" if **any** of events[i+1], events[i+2] is an `assistant-text`, `assistant-thinking`, a Read/Grep tool-use, **or** a `Bash` tool-use whose summary is **not byte-identical** to the errored call. "unhandled" only when the next event is a byte-identical retry of the failed call, or the session ends. Ratio handled/total: ≥0.8 pass · 0.5–0.8 watch · <0.5 fail · 0 errors na |
+| `error-handling` | a `tool-error` is "handled" only if events[i+1..i+2] is a Read/Grep tool-use or an `assistant-text` — a diagnostic `Bash` (`git status`, `ls`) scored as unhandled, so competent sessions failed | **single definition** `[gate-r2: CTO-r2-B1]`: a `tool-error` at index i is **unhandled** iff `events[i+1]` exists and is a `tool-use` whose `(toolName, summary)` equals the errored call's `(toolName, summary)` (a blind identical retry), OR no event follows i (the session ended on the error). It is **handled** in every other case — `handled` ≡ not `unhandled`, complementary by construction, so every error is deterministically classified. The comparison uses the `ToolUseEvent` `(toolName, summary)` fields (the only ones the parser retains — there are no raw call bytes to compare). handled/total ratio: `≥0.8`→pass · `≥0.5 and <0.8`→watch · `<0.5`→fail · 0 `tool-error`s→na |
 | `thrashing` | every adjacent same-file `<5s` Edit pair = an "episode" (1–3 watch, ≥4 fail) — fired on normal "edit section A then section B" | a **thrash run** = a maximal run of **≥3** `Edit` events to the same file, each `<5000ms` after the previous, with no `Read` of that file between consecutive edits of the run. Count runs: 0 pass · 1 watch · ≥2 fail |
 
 The 7 other scorers are unchanged. `communication` and `workflow-touchpoints`
@@ -262,8 +283,10 @@ the transcript dir). `:sessionId` is the `.jsonl` basename. `[gate-r1: ARCH-Q]`
 A no-auth localhost `PUT` is reachable by any browser tab. v4 requires, on
 the write route: (a) `Content-Type: application/json` — anything else → `415`
 (a non-simple content type forces a CORS preflight a malicious page cannot
-satisfy); (b) a same-origin check — reject unless `Sec-Fetch-Site: same-origin`
-(or, absent that header, an `Origin` matching the server's own); (c) **no
+satisfy); (b) a same-origin check that **fails closed** — the PUT is rejected unless
+`Sec-Fetch-Site: same-origin`, or (if that header is absent) an `Origin`
+header exactly matching the server's own loopback origin; a PUT carrying
+**neither** header is rejected `[gate-r2: SEC-r2]`; (c) **no
 `@fastify/cors`** is registered — the default (no CORS headers) is kept, so
 cross-origin reads/writes fail. (a)+(b)+(c) together close the browser-tab
 CSRF/exfiltration vector. A concrete `bodyLimit` of **64 KB** is set on the
@@ -280,7 +303,9 @@ sanitizer covers the **datalake write** path; discovery gets its **own**
 sanitizer for the **transcript read** path (or a shared one lifted to
 `@metaswarm-dashboard/types/fs-utils`). The encoded-cwd → dir mapping is
 itself validated (the encoded name must resolve, via realpath, to a child of
-`TRANSCRIPTS_DIR`).
+`TRANSCRIPTS_DIR`). When any of these checks fails, the endpoint returns
+`404` (not `403`) — it does not confirm the existence of a path outside
+`TRANSCRIPTS_DIR` `[gate-r2: SEC-r2]`.
 
 ### 8.3 Threat model summary
 - **High → mitigated:** browser-tab CSRF/exfiltration (§8.1); server-side
@@ -307,10 +332,14 @@ v3 WU-1..WU-5: **done.** v3 WU-4.5: **closed as superseded** (recorded in
 - **A — rubric → advisory + bug-fixes** (`packages/sessions/src/rubric`,
   `packages/sessions/package.json`): §5; remove dangling `./cli/*` exports.
 - **B — rating schemas** (`packages/types`): §4.
-- **C — session discovery + server read API**: new
-  `packages/sessions/src/transcript-discovery.ts` (own WU-3-sized edge-case
-  test list); populate `packages/sessions/src/index.ts`; the three `GET`
-  endpoints; the mtime cache.
+- **C — shared lifts + session discovery + server read API**: lift the
+  config loader and add `transcriptsDir()` to `@metaswarm-dashboard/types`
+  (§3.5); new `packages/sessions/src/transcript-discovery.ts` —
+  **fs-injectable** (`discoverSessions(env, fs?)`, mirroring v3's
+  `parseTranscript(filePath, fs?)`, so the live scan + cache are coverable to
+  the 100%-lines threshold) — with its own WU-3-sized edge-case test list;
+  populate `packages/sessions/src/index.ts`; the three `GET` endpoints; the
+  mtime+size-keyed bounded-LRU cache.
 - **D — server write API**: `PUT .../rating`; `writeSessionRating` (a sibling
   of WU-5's writer reusing `sanitizeSegment`/`assertPathWithinRoot`/
   `atomicWriteJson`); the `method-guard.ts` re-scope (§3.3); §8.1 contract.
