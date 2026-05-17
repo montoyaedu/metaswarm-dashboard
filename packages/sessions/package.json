@@ -1,0 +1,37 @@
+{
+  "name": "@metaswarm-dashboard/sessions",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./cli/audit": {
+      "types": "./dist/cli/audit.d.ts",
+      "import": "./dist/cli/audit.js"
+    },
+    "./cli/timeline": {
+      "types": "./dist/cli/timeline.d.ts",
+      "import": "./dist/cli/timeline.js"
+    },
+    "./cli/tail": {
+      "types": "./dist/cli/tail.d.ts",
+      "import": "./dist/cli/tail.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  }
+}

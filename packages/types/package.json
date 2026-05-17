@@ -24,6 +24,14 @@
     "./paths": {
       "types": "./dist/paths.d.ts",
       "import": "./dist/paths.js"
+    },
+    "./fs-utils": {
+      "types": "./dist/fs-utils.d.ts",
+      "import": "./dist/fs-utils.js"
+    },
+    "./sessions": {
+      "types": "./dist/sessions.d.ts",
+      "import": "./dist/sessions.js"
     }
   },
   "files": [
