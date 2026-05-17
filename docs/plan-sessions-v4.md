@@ -98,7 +98,12 @@ Format per WU: **spec** (design ref) · **file scope** · **DoD** · **deps**.
   `index.ts`, new `__tests__/transcript-discovery.test.ts`.
 - **DoD:** edge-case test list (missing dir, symlink-pointing-out refusal,
   traversal attempts, the encoding, empty/absent, non-`.jsonl` ignored);
-  discovery 100% covered (fs-injected); build/typecheck/test/lint green.
+  discovery 100% covered (fs-injected); **after this WU
+  `packages/sessions/src/index.ts` exports exactly `parseTranscript`,
+  `scoreTimeline`, `discoverSessions` — re-exporting the v3-built
+  `jsonl-reader.ts` and `rubric/index.ts` modules, not only the new
+  `transcript-discovery.ts` — with a test asserting that export set**
+  (v4-6 later adds `writeSessionRating`); build/typecheck/test/lint green.
 - **deps:** v4-2.
 
 ### v4-5 — Server read API
@@ -107,13 +112,20 @@ Format per WU: **spec** (design ref) · **file scope** · **DoD** · **deps**.
   wiring `discoverSessions`+`parseTranscript`+`scoreTimeline`+config
   resolution. The mtime+size-keyed bounded-LRU parse/score cache (key
   `(realpath, mtimeMs, size)`). `:project`/`:sessionId` sanitized; failures →
-  `404`. `packages/server/package.json` gains `@metaswarm-dashboard/sessions`;
-  tsconfig project refs updated.
+  `404`. The server resolves `:project` through
+  `@metaswarm-dashboard/types/config` (the v4-2 lifted loader).
+  `packages/server/package.json` gains `@metaswarm-dashboard/sessions` as a
+  workspace dep; cross-package resolution is npm-workspaces +
+  `moduleResolution:Bundler` via the `exports` maps — this repo has no
+  tsconfig project references and none are added.
 - **file scope:** `packages/server/src/` (route module(s), the cache,
-  registration in `server.ts`), `package.json`, `tsconfig*.json`; tests.
-- **DoD:** endpoint tests via Fastify `app.inject` (success, `400`/`404`,
-  the cache, traversal rejection); coverage met (the live scan is fs-injected
-  for tests); build/typecheck/test/lint green.
+  registration in `server.ts`), `packages/server/package.json`; tests.
+- **DoD:** endpoint tests via Fastify `app.inject` (success, `400`
+  malformed-project, `404`, the cache, traversal rejection); the config
+  loader is consumed via `@metaswarm-dashboard/types/config` — a grep
+  confirms **no** deep-import of `@metaswarm-dashboard/collector` internals
+  (anti-goal §12.10); coverage met (the live scan is fs-injected for tests);
+  build/typecheck/test/lint green.
 - **deps:** v4-1, v4-3, v4-4.
 
 ### v4-6 — Server write API  **[HUMAN CHECKPOINT]**
@@ -121,20 +133,27 @@ Format per WU: **spec** (design ref) · **file scope** · **DoD** · **deps**.
   rating` — body `{verdicts, overallNote?}` only; the server **re-derives**
   `rubricAtRating`. New `writeSessionRating(rating, dataDir, fs?)` (a sibling
   of WU-5's writer reusing `sanitizeSegment`/`assertPathWithinRoot`/
-  `atomicWriteJson`). Re-scope `packages/server/src/plugins/method-guard.ts`
-  to an exact-match allow-list of the one write route — rejecting extra
-  segments, query strings, trailing slash and case variants
-  `[gate-r3: SEC suggestion]`. §8.1 contract: `Content-Type: application/json`
+  `atomicWriteJson`). Re-scope `packages/server/src/plugins/method-guard.ts`:
+  it continues to allow `GET` and `HEAD` (the existing pass-through MUST be
+  preserved) and now also allows exactly the one write route via an
+  exact-match allow-list — rejecting extra segments, query strings, trailing
+  slash and case variants `[gate-r3: SEC suggestion]`; every other
+  method/route still 405s. §8.1 contract: `Content-Type: application/json`
   (else `415`), same-origin check **fail-closed**, 64 KB `bodyLimit` (`413`),
   no `@fastify/cors`. dataDir-inside-git warning applied to rating writes.
 - **file scope:** `packages/server/src/` (write route, `method-guard.ts`),
   `packages/sessions/src/writer.ts` (+`writeSessionRating`) & `index.ts`;
-  tests incl. `server.test.ts` method-guard updates.
-- **DoD:** PUT happy/upsert; method-guard allows only the one route + the
-  exact-match rejections tested; `415`/`413`/fail-closed-origin tested;
-  `writeSessionRating` tested (sanitization, containment, atomic);
-  build/typecheck/test/lint green; coverage met. **Human checkpoint** after
-  COMMIT — first write surface, security-critical.
+  tests — method-guard updates land in **both** `server.test.ts` and
+  `spa-edge-cases.test.ts` (both carry the existing 405 assertions that the
+  re-scope changes).
+- **DoD:** PUT happy/upsert; method-guard still allows `GET` + `HEAD`, now
+  also the one `PUT` route, and 405s everything else — the `HEAD`
+  pass-through is preserved (tested) and the exact-match rejections
+  (`.../rating/`, `.../rating?x=1`, case variants, extra segments,
+  `POST`/`DELETE` on the route) are all tested; `415`/`413`/
+  fail-closed-origin tested; `writeSessionRating` tested (sanitization,
+  containment, atomic); build/typecheck/test/lint green; coverage met.
+  **Human checkpoint** after COMMIT — first write surface, security-critical.
 - **deps:** v4-1, v4-5.
 
 ### v4-7 — SPA Sessions list + detail/timeline + navigation
@@ -148,8 +167,10 @@ Format per WU: **spec** (design ref) · **file scope** · **DoD** · **deps**.
 - **file scope:** `packages/web/src/` — `App.vue`, `router.ts`, the two
   views, list/detail components, `lib/ratings-api.ts` (read methods); tests.
 - **DoD:** component tests (@vue/test-utils) for the list, detail, nav, and
-  all states; no `v-html` on transcript content (test/lint guard);
-  build/typecheck/test/lint green; coverage met.
+  all states (`App.vue` is coverage-excluded in `vitest.config.ts` — exercise
+  the nav via a mounted component / the existing back-nav E2E pattern, not
+  via `App.vue` coverage); no `v-html` on transcript content (test/lint
+  guard); build/typecheck/test/lint green; coverage met.
 - **deps:** v4-5.
 
 ### v4-8 — SPA rating survey + calibration summary
