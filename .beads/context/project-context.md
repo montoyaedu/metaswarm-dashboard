@@ -22,6 +22,15 @@ Work-unit chain: WU-1 → WU-2 → WU-3 → WU-4 → WU-4.5 → WU-5 → WU-6 �
 | WU | Title | Key Files | Notes |
 |----|-------|-----------|-------|
 | WU-1 | skeleton + PoC delete + atomicWriteJson lift + guards | `packages/sessions/*`, `packages/types/src/fs-utils.ts`, `packages/collector/src/writer.ts` | commit 3664778. `atomicWriteJson`/`WriterError`/`WriterFsHooks` now in `@metaswarm-dashboard/types/fs-utils` (subpath export). `packages/session-observer/` deleted. Branch `sessions-spike`. |
+| WU-2 | Zod schemas | `packages/types/src/sessions.ts` | commit 59369dc. 9 additive schemas (ToolUseEvent, SessionTimeline, RubricItem, ProcessRubricScore, SessionSnapshot, …). |
+| WU-3 | JSONL parser | `packages/sessions/src/jsonl-reader.ts`, `__tests__/fixtures/synthetic-events.{jsonl,expected.json}` | `parseTranscript(filePath,fs?)→SessionTimeline`. Synthetic fixture (marker-line first) + golden master. |
+| WU-4 | rubric scorers (9) + composer | `packages/sessions/src/rubric/*` | one scorer per RubricKey + `scoreTimeline`. `thrashing` rule = consecutive Edits in the Edit subsequence, same file, <5s, no intervening same-file Read. KPI correctness validated by WU-4.5. |
+| WU-5 | snapshot writer | `packages/sessions/src/writer.ts` | `writeSessionSnapshot` — sanitized, realpath-contained, atomic. |
+
+## Established edge decisions (rubric)
+- `tdd`: production code + zero tests → `fail` (not `na`; `na` only when neither written).
+- `planning`: no src write at all → `pass`.
+- `thrashing`: literal event-stream adjacency was a dead KPI — corrected (see WU-4 row).
 
 ## Open follow-ups discovered
 - `metaswarm-dashboard-0nt` (P2 bug) — `main` fails `npm run test:coverage` on every axis (pre-existing MVP debt). WU-7 depends on it; must be green before the spike PR (design §15.1).
