@@ -140,10 +140,10 @@ Format per WU: **spec** (design ref) · **file scope** · **DoD** · **deps**.
   `atomicWriteJson`). The rating file is **day-independent** —
   `<dataDir>/projects/<name>/sessions/ratings/<sessionId>.rating.json`, keyed
   by `(project, sessionId)` only — so a re-rate **upserts (overwrites)** the
-  single file. (This corrects design §13's day-keyed `<YYYY-MM-DD>/` path: a
-  snapshot is a point-in-time artifact, but a rating is mutable operator
-  state and must not be day-bucketed, else a cross-day re-rate would leave
-  two files for one session.) Re-scope `packages/server/src/plugins/method-guard.ts`:
+  single file. (Design §13 specifies this day-independent layout: a snapshot
+  is a point-in-time artifact, but a rating is mutable operator state and
+  must not be day-bucketed, else a cross-day re-rate would leave two files
+  for one session.) Re-scope `packages/server/src/plugins/method-guard.ts`:
   it continues to allow `GET` and `HEAD` (the existing pass-through MUST be
   preserved) and now also allows exactly the one write route via an
   exact-match allow-list — rejecting extra segments, query strings, trailing
