@@ -100,18 +100,25 @@ A purely mechanical §9.4 reading (1-of-2 always keeps) would give "7 keep" —
 but that would be exactly the "ship a degraded rubric silently" outcome §15.3
 forbids, given finding #1 (the rubric does not discriminate).
 
-## Decision (pending — §15.3 routes this to the operator)
+## Decision — recorded 2026-05-17
 
-WU-4.5 stays **open** until the operator records a §15.3 decision. Options
-put to the operator (with the executor's recommendation):
+The operator directed **Option A, reshaped into a product feature** (not a
+one-off rubric rework). Design v4 — `docs/design-sessions-spike-v4.md` — is
+the recorded §15.3 resolution:
 
-- **A — Rework the rubric, then re-calibrate (recommended).** Pause WU-6.
-  Fix the systematic scorer flaws (#2, #3), revisit the aggregate (#1) and
-  the beads-centric criteria (#4), retire or rebuild the inert criteria (#5),
-  record each change as a `bd decision` per §12.9, then re-run calibration.
-- **B — Ship a reduced rubric now.** Drop the 4 failing criteria, ship the
-  5 survivors + CLI (WU-6) as-is. Honest but low-utility — two survivors are
-  inert; `overall` still skews `fail`.
-- **C — Pause the spike** per the §15.3 default and reassess scope later.
+- the automatic rubric is **demoted to an advisory suggestion**, and its two
+  systematic bugs (`error-handling`'s diagnostic-`Bash` blindness,
+  `thrashing`'s over-fire on normal multi-edit) are fixed with concrete,
+  recorded threshold changes;
+- **calibration becomes a continuous dashboard feature** — a "Sessions"
+  rating UI collects the operator's per-KPI verdicts as ground truth over
+  time, replacing the one-off N=2 calibration;
+- the inert criteria (`cross-reference`, `prompt-coherence`) are kept as
+  suggestions rather than dropped — the operator's accumulated ratings, not
+  a one-off drop decision, now govern which criteria carry weight, and design
+  v4 §10 defines the loop that retires a criterion on the evidence.
 
-This file will be updated with the recorded decision once made.
+**WU-4.5 (`metaswarm-dashboard-0ga`) is therefore closed as superseded by
+design v4.** The §15.3 calibration-kill is formally resolved by this recorded
+decision; the continuous-calibration loop and its measurable 2-week check
+live in design v4 §10–§11.
