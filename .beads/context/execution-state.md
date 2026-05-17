@@ -1,36 +1,33 @@
-# Execution State — sessions-spike
+# Execution State — sessions-spike v4
 
 ## Current Position
-- Phase: **design v4 APPROVED by the design-review gate (5/5, 3 rounds, 2026-05-17).**
-- Next: write the v4 implementation plan (decompose §9 WU-A..G into detailed
-  work units) → plan-review gate → operator picks execution method → build.
+- Phase: **executing v4** — plan approved (design gate 5/5, plan gate 3/3),
+  operator chose metaswarm orchestrated execution (4-phase loop per WU).
+- Active work unit: **v4-1** (`metaswarm-dashboard-b5z`) — rating schemas.
+- Current phase: IMPLEMENT.
 - Branch: `sessions-spike` (NOT pushed — design anti-goal §12.7; operator pushes).
+- Plan: `.beads/plans/active-plan.md` + canonical `docs/plan-sessions-v4.md`.
 
-## Done
-| Item | Status |
-|------|--------|
-| WU-1..WU-5 (v3) | COMPLETE — committed (skeleton, schemas, parser, 9 rubric scorers, snapshot writer) |
-| Coverage debt `metaswarm-dashboard-0nt` | CLOSED — `npm run test:coverage` exits 0 |
-| WU-4.5 calibration `metaswarm-dashboard-0ga` | CLOSED — §15.3 kill; superseded by design v4 |
-| Design v4 (`docs/design-sessions-spike-v4.md`) | APPROVED 5/5 by the design-review gate |
+## v4 work units (beads)
+| WU | bead | status |
+|----|------|--------|
+| v4-1 rating schemas | b5z | IN-PROGRESS (IMPLEMENT) |
+| v4-2 shared lifts | fhb | ready |
+| v4-3 rubric advisory + fixes | 2tf | ready |
+| v4-4 transcript-discovery | xyl | blocked ← v4-2 |
+| v4-5 server read API | f27 | blocked ← v4-1,3,4 |
+| v4-6 server write API [HUMAN CHECKPOINT] | na3 | blocked ← v4-1,5 |
+| v4-7 SPA list/detail/nav | qxk | blocked ← v4-5 |
+| v4-8 SPA rating survey + calibration | 26a | blocked ← v4-6,7 |
+| v4-9 integration + docs + follow-ups | vka | blocked ← v4-1..8 |
 
-## Next — v4 implementation (design v4 §9, work-unit shape)
-- A: rubric → advisory + the 2 bug-fixes (error-handling, thrashing)
-- B: rating schemas in `@metaswarm-dashboard/types`
-- C: shared lifts (config loader + `transcriptsDir`) + session discovery + server read API
-- D: server write API + `method-guard.ts` re-scope
-- E: SPA Sessions list + detail/timeline + nav bar
-- F: SPA rating survey + calibration summary + eslint write-guard re-scope
-- G: integration test + docs + follow-up beads + the 2-week usage-check bead
+Execution order: v4-1 → v4-2 → v4-3 → v4-4 → v4-5 → v4-6 (checkpoint) → v4-7 → v4-8 → v4-9.
 
-## Open follow-ups / housekeeping for the planning step
-- Stale v3 beads to close-as-superseded when the v4 plan is written:
-  `metaswarm-dashboard-vcr` (v3 WU-6), `-pkl` (v3 WU-7), `-9qo` (v3 WU-8).
-- Non-blocking gate suggestions to fold into the plan: method-guard exact-match
-  shape + test; WU-E no-`v-html` on transcript content; row-click nav;
-  min-1-verdict to save; the config.ts barrel decision; the error-handling
-  summary-truncation edge-case test fixture.
+## Done (foundation)
+WU-1..WU-5 (v3) committed; coverage debt `0nt` closed; WU-4.5 calibration
+(`0ga`) closed — §15.3 kill resolved by the v4 re-scope; v3 WU-6/7/8
+(`vcr`/`pkl`/`9qo`) closed as superseded by v4.
 
 ## Recovery
-`bd prime`; read this file + `project-context.md` + `docs/design-sessions-spike-v4.md`;
-`git log sessions-spike`.
+`bd prime`; read this file + `project-context.md` + `docs/plan-sessions-v4.md`
++ `docs/design-sessions-spike-v4.md`; `git log sessions-spike`.
