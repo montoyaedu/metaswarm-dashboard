@@ -63,6 +63,7 @@ The lockfile is `package-lock.json` and is committed.
 | `vue-router@5` | Mandates Pinia peer dep; conflicts with §2.5 |
 | `vitest-axe` (a11y) | Not in issue scope; UI is a single-operator local tool |
 | `gh pr list` integration | Plan §2.6 hard-codes `prsMergedLast7d: null` in MVP; see follow-up issue #2 |
+| Go (for the sessions-spike v4 write API) | sessions-spike v4 needs write endpoints; the existing Fastify server (`packages/server`) is extended instead. A second language fragments the uniform-TS toolchain — shared Zod types, one vitest/coverage/eslint. Operator floated Go, delegated the call; evaluated and rejected 2026-05-17 (see `.beads/knowledge/decisions.jsonl`). |
 
 ## How to extend this in future steps
 
