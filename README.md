@@ -136,6 +136,61 @@ Starts the local Fastify server. Refuses non-GET methods on `/api/*` with HTTP 4
 |---|---|
 | `METASWARM_DASHBOARD_DATA_DIR` | Override the snapshots data dir |
 | `METASWARM_DASHBOARD_CONFIG` | Override the config.yaml path |
+| `METASWARM_DASHBOARD_TRANSCRIPTS_DIR` | Override the Claude Code transcripts dir (default `~/.claude/projects`) — see [Observing Claude Code sessions](#observing-claude-code-sessions) |
+
+## Observing Claude Code sessions
+
+Beyond the BEADS-derived project metrics, the dashboard also reads the
+**Claude Code session transcripts** your agents leave behind under
+`~/.claude/projects/` and surfaces them as a session logbook you can review
+and rate. This is the dashboard's read of *how a session actually went*.
+
+### What it does
+
+For each closed Claude Code session the dashboard:
+
+- **Discovers** the transcript JSONL for every configured project (matching
+  each project's path to its `~/.claude/projects/<encoded-cwd>/` directory).
+- **Scores** the session against a 9-KPI rubric (setup discipline, planning,
+  TDD, error handling, thrashing, cross-reference, communication, prompt
+  coherence, workflow touchpoints). **The rubric is an advisory suggestion,
+  not a grade** — it is a heuristic first guess, nothing more.
+- **Lets you rate** the session yourself, per KPI (`pass` / `watch` / `fail`
+  / `na` / `unsure`). Your rating is the ground truth; partial ratings (rate
+  3 of 9 KPIs) and rare use are fully supported — rate only the sessions you
+  care about.
+- **Accrues calibration**: as you rate sessions, the dashboard tallies how
+  often the rubric's suggestion agreed with your own verdict, per KPI. A
+  criterion that systematically disagrees can be retired; one that agrees can
+  be trusted more.
+
+### The `/sessions` dashboard view
+
+Open the dashboard and navigate to **Sessions** from the nav bar:
+
+- **List** — every discovered session across all configured projects: which
+  project, when it ran, how long, how many events, and whether you have
+  rated it yet.
+- **Detail + timeline** — open any session for its event timeline (prompts,
+  tool calls, results) without re-reading raw JSONL.
+- **Rating survey** — record your per-KPI verdict for the session. Re-opening
+  a rated session pre-populates your previous answers; saving again upserts.
+- **Calibration summary** — a panel on `/sessions` showing per-KPI rubric-vs-
+  operator agreement, with a sample-size floor (`N ≥ 5`) so small-N noise is
+  not mistaken for signal.
+
+### Where transcripts and ratings live
+
+The dashboard reads transcripts from `~/.claude/projects/` by default.
+Override the location with the `METASWARM_DASHBOARD_TRANSCRIPTS_DIR` env var
+(set the same value for `serve` as wherever Claude Code writes its
+transcripts).
+
+Your ratings are written **only to the dashboard's own data dir** (the same
+XDG-aware datalake `collect` uses) — one `<sessionId>.rating.json` per rated
+session. Transcripts under `~/.claude/projects/` and your observed repos are
+**never modified**: the zero-footprint invariant holds for the Sessions
+feature exactly as it does for `collect`.
 
 ## Troubleshooting
 
