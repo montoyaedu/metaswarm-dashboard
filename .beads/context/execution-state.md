@@ -12,8 +12,8 @@
 | WU | bead | status |
 |----|------|--------|
 | v5-1 cost foundation | 2ke | ✅ COMMITTED |
-| v5-2 Claude cost parse | ecq | ▶ IN PROGRESS |
-| v5-3 Codex reader | e89 | blocked ← v5-1 |
+| v5-2 Claude cost parse | ecq | ✅ COMMITTED |
+| v5-3 Codex reader | e89 | ▶ IN PROGRESS |
 | v5-4 Gemini ledger reader | r2x | blocked ← v5-1 |
 | v5-5 aggregation | byq | blocked ← v5-2,3,4 |
 | v5-6 ai-title + schema | bvk | blocked ← v5-2 |
