@@ -11,8 +11,7 @@
     "packages/*"
   ],
   "scripts": {
-    "prebuild": "npm run build -w packages/types",
-    "build": "npm run build --workspaces --if-present",
+    "build": "npm run build --if-present -w packages/types -w packages/sessions -w packages/collector -w packages/server -w packages/web",
     "pretypecheck": "npm run build -w packages/types",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "pretest": "npm run build -w packages/types",
