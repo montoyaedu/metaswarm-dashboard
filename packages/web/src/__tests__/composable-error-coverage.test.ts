@@ -8,6 +8,9 @@ import type { ApiClient } from '../api/client.js';
 import { useAgents } from '../composables/useAgents.js';
 import { useProjectDetail } from '../composables/useProjectDetail.js';
 import { useProjects } from '../composables/useProjects.js';
+import { useSessionDetail } from '../composables/useSessionDetail.js';
+import { useSessions } from '../composables/useSessions.js';
+import type { RatingsApi } from '../lib/ratings-api.js';
 
 async function flushAll(): Promise<void> {
   for (let i = 0; i < 5; i++) await Promise.resolve();
@@ -21,6 +24,14 @@ function rejectingClient(thrown: unknown): ApiClient {
       throw thrown;
     });
   return { getProjects: reject, getProject: reject, getAgents: reject };
+}
+
+function rejectingRatingsApi(thrown: unknown): RatingsApi {
+  const reject = (): Promise<never> =>
+    Promise.resolve().then(() => {
+      throw thrown;
+    });
+  return { getSessions: reject, getSession: reject, getCalibration: reject };
 }
 
 describe('Composables — non-Error rejection branch', () => {
@@ -43,5 +54,24 @@ describe('Composables — non-Error rejection branch', () => {
     await flushAll();
     expect(state.error.value).toBeInstanceOf(Error);
     expect(state.error.value?.message).toContain('object');
+  });
+
+  it('useSessions: string rejection becomes a new Error', async () => {
+    const state = useSessions(ref(''), rejectingRatingsApi('sessions string failure'));
+    await flushAll();
+    expect(state.error.value).toBeInstanceOf(Error);
+    expect(state.error.value?.message).toBe('sessions string failure');
+  });
+
+  it('useSessionDetail: string rejection becomes a new Error (non-404)', async () => {
+    const state = useSessionDetail(
+      ref('alpha'),
+      ref('sess-a1'),
+      rejectingRatingsApi('detail string failure'),
+    );
+    await flushAll();
+    expect(state.notFound.value).toBe(false);
+    expect(state.error.value).toBeInstanceOf(Error);
+    expect(state.error.value?.message).toBe('detail string failure');
   });
 });

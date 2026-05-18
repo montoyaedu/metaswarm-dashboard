@@ -3,6 +3,8 @@ import { createRouter, createWebHistory, type Router } from 'vue-router';
 import AgentsView from './views/AgentsView.vue';
 import ProjectDetail from './views/ProjectDetail.vue';
 import ProjectsIndex from './views/ProjectsIndex.vue';
+import SessionDetailView from './views/SessionDetailView.vue';
+import SessionsView from './views/SessionsView.vue';
 
 export function createAppRouter(): Router {
   return createRouter({
@@ -11,6 +13,12 @@ export function createAppRouter(): Router {
       { path: '/', name: 'projects-index', component: ProjectsIndex },
       { path: '/projects/:name', name: 'project-detail', component: ProjectDetail, props: true },
       { path: '/agents', name: 'agents', component: AgentsView },
+      { path: '/sessions', name: 'sessions', component: SessionsView },
+      {
+        path: '/sessions/:project/:sessionId',
+        name: 'session-detail',
+        component: SessionDetailView,
+      },
     ],
   });
 }
