@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { NConfigProvider, darkTheme } from 'naive-ui';
+
+import AppNav from './components/AppNav.vue';
 </script>
 
 <template>
   <NConfigProvider :theme="darkTheme">
+    <AppNav />
     <RouterView />
   </NConfigProvider>
 </template>

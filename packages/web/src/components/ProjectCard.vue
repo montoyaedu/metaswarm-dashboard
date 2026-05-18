@@ -36,10 +36,15 @@ const advice = computed(() =>
 
 const statusBadge = computed(() => {
   // git-only projects get a distinct neutral badge (not a warning) to
-  // signal "we know this exists but it isn't metaswarm-managed yet."
+  // signal "we know this exists but it isn't metaswarm-managed yet".
+  // Unreachable: `statusBadge` is read only inside the `v-else` of
+  // `v-if="isGitOnly"`, so this computed never runs for a git-only
+  // project. Kept as a defensive guard mirroring the template gate.
+  /* v8 ignore start */
   if (props.project.category === 'git-only') {
     return { type: 'info' as const, label: 'not yet managed' };
   }
+  /* v8 ignore stop */
   switch (props.project.collectionStatus) {
     case 'failed':
       return { type: 'error' as const, label: 'failed' };

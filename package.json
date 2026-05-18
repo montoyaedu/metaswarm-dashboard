@@ -11,13 +11,14 @@
     "packages/*"
   ],
   "scripts": {
-    "prebuild": "npm run build -w packages/types",
-    "build": "npm run build --workspaces --if-present",
+    "build": "npm run build --if-present -w packages/types -w packages/sessions -w packages/collector -w packages/server -w packages/web",
     "pretypecheck": "npm run build -w packages/types",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "pretest": "npm run build -w packages/types",
     "test": "vitest run",
+    "pretest:coverage": "npm run build -w packages/types",
     "test:coverage": "vitest run --coverage",
+    "prelint": "npm run build",
     "lint": "eslint .",
     "format:check": "prettier --check .",
     "format": "prettier --write .",

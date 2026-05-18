@@ -115,6 +115,104 @@ describe('ProjectsIndex', () => {
     restore();
   });
 
+  it('group summary lists git-only, degraded and failed counts (statusSummary branches)', async () => {
+    const restore = withFetch([
+      {
+        name: 'managed-ok',
+        activeTasks: 1,
+        blockedTasks: 0,
+        prsMergedLast7d: null,
+        lastActivityAt: null,
+        path: '/Users/me/code/managed-ok',
+        category: 'metaswarm',
+        hasMetrics: true,
+        collectionStatus: 'ok',
+        collectionWarnings: [],
+      },
+      {
+        name: 'degraded-one',
+        activeTasks: 2,
+        blockedTasks: 1,
+        prsMergedLast7d: null,
+        lastActivityAt: null,
+        path: '/Users/me/code/degraded-one',
+        category: 'metaswarm',
+        hasMetrics: true,
+        collectionStatus: 'degraded',
+        collectionWarnings: ['Dolt server unreachable'],
+      },
+      {
+        name: 'failed-one',
+        activeTasks: 0,
+        blockedTasks: 0,
+        prsMergedLast7d: null,
+        lastActivityAt: null,
+        path: '/Users/me/code/failed-one',
+        category: 'metaswarm',
+        hasMetrics: false,
+        collectionStatus: 'failed',
+        collectionWarnings: ['no .beads/ directory'],
+      },
+      {
+        name: 'vanilla',
+        activeTasks: 0,
+        blockedTasks: 0,
+        prsMergedLast7d: null,
+        lastActivityAt: null,
+        path: '/Users/me/code/vanilla',
+        category: 'git-only',
+        hasMetrics: false,
+        collectionStatus: 'ok',
+        collectionWarnings: [],
+      },
+    ]);
+    const router = makeRouterWithProjectsIndex();
+    const w = mount(App, { global: { plugins: [router] } });
+    await router.push('/');
+    await router.isReady();
+    await flushPromises();
+
+    const summary = w.find('[data-testid="group-summary-/Users/me/code"]');
+    expect(summary.exists()).toBe(true);
+    const text = summary.text();
+    expect(text).toContain('4 total');
+    expect(text).toContain('3 metaswarm');
+    expect(text).toContain('1 git-only');
+    expect(text).toContain('1 degraded');
+    expect(text).toContain('1 failed');
+    restore();
+  });
+
+  it('renders the (no parent) / root fallback labels for a top-level project', async () => {
+    // A path like "/alpha" has dirname '' → the group testid/path fall back
+    // to "root" / "(no parent)".
+    const restore = withFetch([
+      {
+        name: 'alpha',
+        activeTasks: 1,
+        blockedTasks: 0,
+        prsMergedLast7d: null,
+        lastActivityAt: null,
+        path: '/alpha',
+        category: 'metaswarm',
+        hasMetrics: true,
+        collectionStatus: 'ok',
+        collectionWarnings: [],
+      },
+    ]);
+    const router = makeRouterWithProjectsIndex();
+    const w = mount(App, { global: { plugins: [router] } });
+    await router.push('/');
+    await router.isReady();
+    await flushPromises();
+
+    expect(w.find('[data-testid="group-root"]').exists()).toBe(true);
+    expect(w.find('[data-testid="group-summary-root"]').exists()).toBe(true);
+    expect(w.find('.group-path').text()).toBe('(no parent)');
+    expect(w.findAll('[data-testid^="project-card-"]')).toHaveLength(1);
+    restore();
+  });
+
   it('clicking a card navigates to project-detail AND back-nav returns to index (DoD #3 minimal)', async () => {
     const restore = withFetch([
       {

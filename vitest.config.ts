@@ -11,6 +11,7 @@ export default defineConfig({
     projects: [
       'packages/types',
       'packages/collector',
+      'packages/sessions',
       'packages/server',
       'packages/web',
     ],
@@ -41,6 +42,7 @@ export default defineConfig({
         // Placeholder index files re-exporting workspace public surface.
         'packages/types/src/index.ts',
         'packages/collector/src/index.ts',
+        'packages/sessions/src/index.ts',
         'packages/server/src/index.ts',
         // Screenshot capture script (Playwright; runs out-of-band only).
         'scripts/**',

@@ -26,6 +26,7 @@
 | Module | File | Exports | Used By |
 |--------|------|---------|---------|
 | _Example: validation_ | _src/shared/validation.ts_ | _Zod schemas_ | _routes, WebSocket handler_ |
+| atomicWriteJson | packages/types/src/fs-utils.ts | atomicWriteJson, WriterError, WriterFsHooks | collector writer.ts, sessions writer (WU-5) |
 
 ## Established Patterns
 

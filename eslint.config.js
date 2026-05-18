@@ -66,9 +66,15 @@ export default tseslint.config(
     },
   },
   {
-    // Web src: forbid write-method literals (per WU-6.4 plan; covers <script> blocks)
+    // Web src: forbid write-method literals (per WU-6.4 plan; covers <script> blocks).
+    // WU v4-8 (design §3.4): `lib/ratings-api.ts` is the ONE sanctioned write
+    // module — the `'PUT'` literal is permitted there and nowhere else. A stray
+    // write literal anywhere else in `packages/web/src` still trips this rule.
     files: ['packages/web/src/**/*.{ts,vue}'],
-    ignores: ['packages/web/src/**/__tests__/**'],
+    ignores: [
+      'packages/web/src/**/__tests__/**',
+      'packages/web/src/lib/ratings-api.ts',
+    ],
     rules: {
       'no-restricted-syntax': [
         'error',

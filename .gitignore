@@ -18,3 +18,9 @@ coverage/
 # Beads / Dolt files (added by bd init)
 .dolt/
 .beads-credential-key
+
+# Real Claude Code transcripts must never be vendored as test fixtures.
+# Synthetic fixtures do NOT use `.real.` in their name; a fixture named
+# `*.real.*` is ignored by git (sessions-spike design §9.2 — defense-in-depth;
+# the load-bearing guard is the marker-line assertion in fixture-guards.ts).
+packages/sessions/src/__tests__/fixtures/*.real.*

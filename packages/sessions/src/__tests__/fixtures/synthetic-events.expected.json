@@ -1,0 +1,612 @@
+{
+  "schemaVersion": 1,
+  "transcriptPath": "synthetic-events.jsonl",
+  "sessionId": "sess-synth-2026-05-17",
+  "projectCwd": "/home/operator/sample-widget-service",
+  "startedAt": "2026-05-17T09:00:00.000Z",
+  "lastEventAt": "2026-05-17T09:39:00.000Z",
+  "eventCount": 75,
+  "skippedLineCount": 0,
+  "events": [
+    {
+      "at": "2026-05-17T09:00:00.000Z",
+      "kind": "user-prompt",
+      "toolName": null,
+      "summary": "Implement WU-3: the JSONL transcript parser for the sessions package. Follow TDD and the project conventions throughout.",
+      "redactionApplied": [],
+      "uuid": "evt-001"
+    },
+    {
+      "at": "2026-05-17T09:00:03.000Z",
+      "kind": "assistant-thinking",
+      "toolName": null,
+      "summary": "Before touching any code I should read the project conventions so I follow the established TDD and coverage rules.",
+      "redactionApplied": [],
+      "uuid": "evt-002"
+    },
+    {
+      "at": "2026-05-17T09:00:03.000Z",
+      "kind": "assistant-text",
+      "toolName": null,
+      "summary": "Let me start by reading the project's setup and convention files.",
+      "redactionApplied": [],
+      "uuid": "evt-002"
+    },
+    {
+      "at": "2026-05-17T09:00:06.000Z",
+      "kind": "tool-use",
+      "toolName": "Read",
+      "summary": "AGENTS.md",
+      "redactionApplied": [],
+      "uuid": "evt-003"
+    },
+    {
+      "at": "2026-05-17T09:00:09.000Z",
+      "kind": "tool-result",
+      "toolName": null,
+      "summary": "# Agent guide Follow strict TDD.",
+      "redactionApplied": [],
+      "uuid": "evt-004"
+    },
+    {
+      "at": "2026-05-17T09:00:12.000Z",
+      "kind": "tool-use",
+      "toolName": "Read",
+      "summary": "CLAUDE.md",
+      "redactionApplied": [],
+      "uuid": "evt-005"
+    },
+    {
+      "at": "2026-05-17T09:00:15.000Z",
+      "kind": "tool-result",
+      "toolName": null,
+      "summary": "# Project instructions 100% line coverage required.",
+      "redactionApplied": [],
+      "uuid": "evt-006"
+    },
+    {
+      "at": "2026-05-17T09:00:18.000Z",
+      "kind": "tool-use",
+      "toolName": "Read",
+      "summary": ".agents/index.md",
+      "redactionApplied": [],
+      "uuid": "evt-007"
+    },
+    {
+      "at": "2026-05-17T09:00:21.000Z",
+      "kind": "tool-result",
+      "toolName": null,
+      "summary": "Index of agent docs and workflow guides.",
+      "redactionApplied": [],
+      "uuid": "evt-008"
+    },
+    {
+      "at": "2026-05-17T09:00:24.000Z",
+      "kind": "tool-use",
+      "toolName": "Read",
+      "summary": ".coverage-thresholds.json",
+      "redactionApplied": [],
+      "uuid": "evt-009"
+    },
+    {
+      "at": "2026-05-17T09:00:27.000Z",
+      "kind": "tool-result",
+      "toolName": null,
+      "summary": "{\"lines\":100,\"branches\":92}",
+      "redactionApplied": [],
+      "uuid": "evt-010"
+    },
+    {
+      "at": "2026-05-17T09:00:30.000Z",
+      "kind": "assistant-thinking",
+      "toolName": null,
+      "summary": "I should claim a beads issue before writing code so the work is tracked.",
+      "redactionApplied": [],
+      "uuid": "evt-011"
+    },
+    {
+      "at": "2026-05-17T09:00:30.000Z",
+      "kind": "tool-use",
+      "toolName": "Bash",
+      "summary": "bd create 'WU-3 parser implementation' --type task --priority 2",
+      "redactionApplied": [],
+      "uuid": "evt-011"
+    },
+    {
+      "at": "2026-05-17T09:00:33.000Z",
+      "kind": "tool-result",
+      "toolName": null,
+      "summary": "Created issue sample-widget-abc",
+      "redactionApplied": [],
+      "uuid": "evt-012"
+    },
+    {
+      "at": "2026-05-17T09:00:36.000Z",
+      "kind": "tool-use",
+      "toolName": "Bash",
+      "summary": "bd update sample-widget-abc --claim",
+      "redactionApplied": [],
+      "uuid": "evt-013"
+    },
+    {
+      "at": "2026-05-17T09:00:39.000Z",
+      "kind": "tool-result",
+      "toolName": null,
+      "summary": "Claimed sample-widget-abc",
+      "redactionApplied": [],
+      "uuid": "evt-014"
+    },
+    {
+      "at": "2026-05-17T09:00:42.000Z",
+      "kind": "assistant-text",
+      "toolName": null,
+      "summary": "Now I will create a sibling bead for the WU-3 parser test suite.",
+      "redactionApplied": [],
+      "uuid": "evt-015"
+    },
+    {
+      "at": "2026-05-17T09:00:42.000Z",
+      "kind": "tool-use",
+      "toolName": "Bash",
+      "summary": "bd create 'WU-3 parser tests' --type task",
+      "redactionApplied": [],
+      "uuid": "evt-015"
+    },
+    {
+      "at": "2026-05-17T09:00:45.000Z",
+      "kind": "tool-result",
+      "toolName": null,
+      "summary": "Created issue sample-widget-def",
+      "redactionApplied": [],
+      "uuid": "evt-016"
+    },
+    {
+      "at": "2026-05-17T09:00:48.000Z",
+      "kind": "tool-use",
+      "toolName": "Bash",
+      "summary": "bd dep add sample-widget-abc sample-widget-def",
+      "redactionApplied": [],
+      "uuid": "evt-017"
+    },
+    {
+      "at": "2026-05-17T09:00:51.000Z",
+      "kind": "tool-result",
+      "toolName": null,
+      "summary": "Dependency added",
+      "redactionApplied": [],
+      "uuid": "evt-018"
+    },
+    {
+      "at": "2026-05-17T09:00:54.000Z",
+      "kind": "assistant-thinking",
+      "toolName": null,
+      "summary": "This work spans the parser and the shared types package, so I need to cross-check the SessionTimeline schema contract.",
+      "redactionApplied": [],
+      "uuid": "evt-019"
+    },
+    {
+      "at": "2026-05-17T09:00:54.000Z",
+      "kind": "assistant-text",
+      "toolName": null,
+      "summary": "Cross-checking the schema in the types package before coding.",
+      "redactionApplied": [],
+      "uuid": "evt-019"
+    },
+    {
+      "at": "2026-05-17T09:00:54.000Z",
+      "kind": "tool-use",
+      "toolName": "Read",
+      "summary": ".agents/notes.md",
+      "redactionApplied": [],
+      "uuid": "evt-019"
+    },
+    {
+      "at": "2026-05-17T09:00:57.000Z",
+      "kind": "tool-result",
+      "toolName": null,
+      "summary": "Cross-package notes from prior WU.",
+      "redactionApplied": [],
+      "uuid": "evt-020"
+    },
+    {
+      "at": "2026-05-17T09:01:00.000Z",
+      "kind": "tool-use",
+      "toolName": "Read",
+      "summary": "packages/types/src/sessions.ts",
+      "redactionApplied": [],
+      "uuid": "evt-021"
+    },
+    {
+      "at": "2026-05-17T09:01:03.000Z",
+      "kind": "tool-result",
+      "toolName": null,
+      "summary": "export const SessionTimeline = z.object(...)",
+      "redactionApplied": [],
+      "uuid": "evt-022"
+    },
+    {
+      "at": "2026-05-17T09:01:06.000Z",
+      "kind": "assistant-thinking",
+      "toolName": null,
+      "summary": "RED first: write the failing test, watch it fail, then implement the minimal parser to make it pass.",
+      "redactionApplied": [],
+      "uuid": "evt-023"
+    },
+    {
+      "at": "2026-05-17T09:01:06.000Z",
+      "kind": "assistant-text",
+      "toolName": null,
+      "summary": "Writing the failing test for the parser first.",
+      "redactionApplied": [],
+      "uuid": "evt-023"
+    },
+    {
+      "at": "2026-05-17T09:01:06.000Z",
+      "kind": "tool-use",
+      "toolName": "Write",
+      "summary": "src/__tests__/parser.test.ts",
+      "redactionApplied": [],
+      "uuid": "evt-023"
+    },
+    {
+      "at": "2026-05-17T09:01:09.000Z",
+      "kind": "tool-result",
+      "toolName": null,
+      "summary": "File written: src/__tests__/parser.test.ts",
+      "redactionApplied": [],
+      "uuid": "evt-024"
+    },
+    {
+      "at": "2026-05-17T09:01:12.000Z",
+      "kind": "tool-use",
+      "toolName": "Bash",
+      "summary": "npm test -- parser.test.ts",
+      "redactionApplied": [],
+      "uuid": "evt-025"
+    },
+    {
+      "at": "2026-05-17T09:01:15.000Z",
+      "kind": "tool-error",
+      "toolName": null,
+      "summary": "FAIL: Cannot find module '../parser.js'",
+      "redactionApplied": [],
+      "uuid": "evt-026"
+    },
+    {
+      "at": "2026-05-17T09:01:18.000Z",
+      "kind": "assistant-text",
+      "toolName": null,
+      "summary": "The module does not exist yet — that is the expected RED state. Let me re-read the test to confirm the contract, then implement.",
+      "redactionApplied": [],
+      "uuid": "evt-027"
+    },
+    {
+      "at": "2026-05-17T09:01:18.000Z",
+      "kind": "tool-use",
+      "toolName": "Read",
+      "summary": "src/__tests__/parser.test.ts",
+      "redactionApplied": [],
+      "uuid": "evt-027"
+    },
+    {
+      "at": "2026-05-17T09:01:21.000Z",
+      "kind": "tool-result",
+      "toolName": null,
+      "summary": "(test file contents)",
+      "redactionApplied": [],
+      "uuid": "evt-028"
+    },
+    {
+      "at": "2026-05-17T09:01:24.000Z",
+      "kind": "assistant-thinking",
+      "toolName": null,
+      "summary": "Now GREEN: the minimal implementation to satisfy the test.",
+      "redactionApplied": [],
+      "uuid": "evt-029"
+    },
+    {
+      "at": "2026-05-17T09:01:24.000Z",
+      "kind": "tool-use",
+      "toolName": "Write",
+      "summary": "src/parser.ts",
+      "redactionApplied": [],
+      "uuid": "evt-029"
+    },
+    {
+      "at": "2026-05-17T09:01:27.000Z",
+      "kind": "tool-result",
+      "toolName": null,
+      "summary": "File written: src/parser.ts",
+      "redactionApplied": [],
+      "uuid": "evt-030"
+    },
+    {
+      "at": "2026-05-17T09:01:30.000Z",
+      "kind": "tool-use",
+      "toolName": "Bash",
+      "summary": "npm run typecheck",
+      "redactionApplied": [],
+      "uuid": "evt-031"
+    },
+    {
+      "at": "2026-05-17T09:01:33.000Z",
+      "kind": "tool-error",
+      "toolName": null,
+      "summary": "error TS2304: Cannot find name 'Buffer'",
+      "redactionApplied": [],
+      "uuid": "evt-032"
+    },
+    {
+      "at": "2026-05-17T09:01:36.000Z",
+      "kind": "assistant-text",
+      "toolName": null,
+      "summary": "Type error on Buffer — let me grep for the canonical import.",
+      "redactionApplied": [],
+      "uuid": "evt-033"
+    },
+    {
+      "at": "2026-05-17T09:01:36.000Z",
+      "kind": "tool-use",
+      "toolName": "Grep",
+      "summary": "Grep import.*Buffer",
+      "redactionApplied": [],
+      "uuid": "evt-033"
+    },
+    {
+      "at": "2026-05-17T09:01:39.000Z",
+      "kind": "tool-result",
+      "toolName": null,
+      "summary": "src/util.ts: import { Buffer } from 'node:buffer'",
+      "redactionApplied": [],
+      "uuid": "evt-034"
+    },
+    {
+      "at": "2026-05-17T09:01:42.000Z",
+      "kind": "tool-use",
+      "toolName": "Edit",
+      "summary": "src/parser.ts",
+      "redactionApplied": [],
+      "uuid": "evt-035"
+    },
+    {
+      "at": "2026-05-17T09:01:45.000Z",
+      "kind": "tool-result",
+      "toolName": null,
+      "summary": "Edited: src/parser.ts",
+      "redactionApplied": [],
+      "uuid": "evt-036"
+    },
+    {
+      "at": "2026-05-17T09:30:00.000Z",
+      "kind": "tool-use",
+      "toolName": "Edit",
+      "summary": "src/parser.ts",
+      "redactionApplied": [],
+      "uuid": "evt-037"
+    },
+    {
+      "at": "2026-05-17T09:30:01.000Z",
+      "kind": "tool-result",
+      "toolName": null,
+      "summary": "Edited",
+      "redactionApplied": [],
+      "uuid": "evt-038"
+    },
+    {
+      "at": "2026-05-17T09:30:03.000Z",
+      "kind": "tool-use",
+      "toolName": "Edit",
+      "summary": "src/parser.ts",
+      "redactionApplied": [],
+      "uuid": "evt-039"
+    },
+    {
+      "at": "2026-05-17T09:30:04.000Z",
+      "kind": "tool-result",
+      "toolName": null,
+      "summary": "Edited",
+      "redactionApplied": [],
+      "uuid": "evt-040"
+    },
+    {
+      "at": "2026-05-17T09:31:00.000Z",
+      "kind": "assistant-text",
+      "toolName": null,
+      "summary": "Re-running the test suite after the fix.",
+      "redactionApplied": [],
+      "uuid": "evt-041"
+    },
+    {
+      "at": "2026-05-17T09:31:00.000Z",
+      "kind": "tool-use",
+      "toolName": "Bash",
+      "summary": "npm test -- parser.test.ts",
+      "redactionApplied": [],
+      "uuid": "evt-041"
+    },
+    {
+      "at": "2026-05-17T09:31:10.000Z",
+      "kind": "tool-result",
+      "toolName": null,
+      "summary": "PASS: 1 test passing",
+      "redactionApplied": [],
+      "uuid": "evt-042"
+    },
+    {
+      "at": "2026-05-17T09:32:00.000Z",
+      "kind": "assistant-thinking",
+      "toolName": null,
+      "summary": "Recording progress notes so the next session has context.",
+      "redactionApplied": [],
+      "uuid": "evt-043"
+    },
+    {
+      "at": "2026-05-17T09:32:00.000Z",
+      "kind": "tool-use",
+      "toolName": "Write",
+      "summary": ".agents/notes.md",
+      "redactionApplied": [],
+      "uuid": "evt-043"
+    },
+    {
+      "at": "2026-05-17T09:32:05.000Z",
+      "kind": "tool-result",
+      "toolName": null,
+      "summary": "File written: .agents/notes.md",
+      "redactionApplied": [],
+      "uuid": "evt-044"
+    },
+    {
+      "at": "2026-05-17T09:33:00.000Z",
+      "kind": "assistant-text",
+      "toolName": null,
+      "summary": "Dispatching a reviewer sub-agent to check the changes.",
+      "redactionApplied": [],
+      "uuid": "evt-045"
+    },
+    {
+      "at": "2026-05-17T09:33:00.000Z",
+      "kind": "tool-use",
+      "toolName": "Agent",
+      "summary": "code-reviewer: Review the WU-3 parser changes against the design spec and project conventions",
+      "redactionApplied": [],
+      "uuid": "evt-045"
+    },
+    {
+      "at": "2026-05-17T09:33:45.000Z",
+      "kind": "tool-result",
+      "toolName": null,
+      "summary": "Review complete: implementation looks correct.",
+      "redactionApplied": [],
+      "uuid": "evt-046"
+    },
+    {
+      "at": "2026-05-17T09:34:00.000Z",
+      "kind": "user-command",
+      "toolName": null,
+      "summary": "<command-name>/self-reflect</command-name> capture learnings from this WU",
+      "redactionApplied": [],
+      "uuid": "evt-047"
+    },
+    {
+      "at": "2026-05-17T09:34:15.000Z",
+      "kind": "assistant-thinking",
+      "toolName": null,
+      "summary": "The user invoked the self-reflect slash command to capture learnings into the knowledge base.",
+      "redactionApplied": [],
+      "uuid": "evt-048"
+    },
+    {
+      "at": "2026-05-17T09:34:15.000Z",
+      "kind": "assistant-text",
+      "toolName": null,
+      "summary": "Running the self-reflection routine to extract learnings now.",
+      "redactionApplied": [],
+      "uuid": "evt-048"
+    },
+    {
+      "at": "2026-05-17T09:35:00.000Z",
+      "kind": "tool-use",
+      "toolName": "Glob",
+      "summary": "Glob src/**/*.ts",
+      "redactionApplied": [],
+      "uuid": "evt-049"
+    },
+    {
+      "at": "2026-05-17T09:35:05.000Z",
+      "kind": "tool-result",
+      "toolName": null,
+      "summary": "src/parser.ts src/index.ts",
+      "redactionApplied": [],
+      "uuid": "evt-050"
+    },
+    {
+      "at": "2026-05-17T09:35:30.000Z",
+      "kind": "tool-use",
+      "toolName": "WaitTool",
+      "summary": "WaitTool 2",
+      "redactionApplied": [],
+      "uuid": "evt-051"
+    },
+    {
+      "at": "2026-05-17T09:35:32.000Z",
+      "kind": "tool-result",
+      "toolName": null,
+      "summary": "waited",
+      "redactionApplied": [],
+      "uuid": "evt-052"
+    },
+    {
+      "at": "2026-05-17T09:36:00.000Z",
+      "kind": "assistant-text",
+      "toolName": null,
+      "summary": "The WU is done — closing the bead with a summary.",
+      "redactionApplied": [],
+      "uuid": "evt-053"
+    },
+    {
+      "at": "2026-05-17T09:36:00.000Z",
+      "kind": "tool-use",
+      "toolName": "Bash",
+      "summary": "bd close sample-widget-abc --reason 'WU-3 parser complete, tests green'",
+      "redactionApplied": [],
+      "uuid": "evt-053"
+    },
+    {
+      "at": "2026-05-17T09:36:03.000Z",
+      "kind": "tool-result",
+      "toolName": null,
+      "summary": "Closed sample-widget-abc",
+      "redactionApplied": [],
+      "uuid": "evt-054"
+    },
+    {
+      "at": "2026-05-17T09:37:00.000Z",
+      "kind": "tool-use",
+      "toolName": "Bash",
+      "summary": "git log --oneline --graph --decorate --all --since='2026-01-01' --until='2026-05-17' --author='operator' --pretty=format",
+      "redactionApplied": [],
+      "uuid": "evt-055"
+    },
+    {
+      "at": "2026-05-17T09:37:20.000Z",
+      "kind": "tool-result",
+      "toolName": null,
+      "summary": "(condensed git history)",
+      "redactionApplied": [],
+      "uuid": "evt-056"
+    },
+    {
+      "at": "2026-05-17T09:38:00.000Z",
+      "kind": "tool-use",
+      "toolName": "Bash",
+      "summary": "npm test",
+      "redactionApplied": [],
+      "uuid": "evt-057"
+    },
+    {
+      "at": "2026-05-17T09:38:40.000Z",
+      "kind": "tool-result",
+      "toolName": null,
+      "summary": "All tests passing across the suite.",
+      "redactionApplied": [],
+      "uuid": "evt-058"
+    },
+    {
+      "at": "2026-05-17T09:39:00.000Z",
+      "kind": "assistant-thinking",
+      "toolName": null,
+      "summary": "Everything is green and the bead is closed. I should give the operator a concise final status.",
+      "redactionApplied": [],
+      "uuid": "evt-059"
+    },
+    {
+      "at": "2026-05-17T09:39:00.000Z",
+      "kind": "assistant-text",
+      "toolName": null,
+      "summary": "WU-3 is complete: the JSONL parser is implemented, every test is green, coverage thresholds are met, and the bead is closed.",
+      "redactionApplied": [],
+      "uuid": "evt-059"
+    }
+  ]
+}

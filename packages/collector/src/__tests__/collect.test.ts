@@ -184,6 +184,65 @@ describe('runCollect — happy path', () => {
   });
 });
 
+describe('runCollect — git-only placeholder projects', () => {
+  it('writes a placeholder daily snapshot for a git-only project without reading .beads/', async () => {
+    // git-only projects are placeholders: collect.ts emits an "ok" snapshot
+    // with category 'git-only' and never invokes the beads reader.
+    writeFileSync(
+      CONFIG_PATH,
+      `projects:\n  - name: vanilla\n    path: ${join(FIXTURES, 'empty-project')}\n    category: git-only\n`,
+      'utf8',
+    );
+    const lines: string[] = [];
+    const result = await runCollect({
+      all: true,
+      now: new Date('2026-05-06T12:00:00Z'), // Wednesday — no weekly write
+      env: envFor(TMP_HOME),
+      execute: noopExec,
+      stdout: (l) => lines.push(l),
+      stderr: () => undefined,
+    });
+    expect(result.exitCode).toBe(0);
+    expect(result.projectsProcessed).toEqual(['vanilla']);
+    expect(result.projectsSkipped).toEqual([]);
+    expect(lines.some((l) => l.includes('[git-only] vanilla'))).toBe(true);
+
+    const dailyPath = join(DATA_DIR, 'projects/vanilla/daily/2026-05-06.json');
+    expect(existsSync(dailyPath)).toBe(true);
+    const json = JSON.parse(readFileSync(dailyPath, 'utf8'));
+    expect(json.category).toBe('git-only');
+    expect(json.collectionStatus).toBe('ok');
+    expect(json.collectionWarnings).toEqual([]);
+    expect(json.agents).toEqual([]);
+    expect(json.prsMergedLast7d).toBeNull();
+    expect(json.totals).toEqual({
+      totalActiveTasks: 0,
+      totalBlockedTasks: 0,
+      totalCompletedTasksLast7d: 0,
+      lastActivityAt: null,
+    });
+  });
+
+  it('git-only project does NOT get a weekly snapshot even on a Monday', async () => {
+    // The git-only branch `continue`s before the Monday weekly-write block.
+    writeFileSync(
+      CONFIG_PATH,
+      `projects:\n  - name: vanilla\n    path: ${join(FIXTURES, 'empty-project')}\n    category: git-only\n`,
+      'utf8',
+    );
+    const result = await runCollect({
+      all: true,
+      now: new Date('2026-05-04T12:00:00Z'), // Monday UTC
+      env: envFor(TMP_HOME),
+      execute: noopExec,
+      stdout: () => undefined,
+      stderr: () => undefined,
+    });
+    expect(result.exitCode).toBe(0);
+    expect(existsSync(join(DATA_DIR, 'projects/vanilla/weekly'))).toBe(false);
+  });
+});
+
 describe('runCollect — exits non-zero on bad config + unknown project', () => {
   it('returns exit 1 when config file is missing', async () => {
     rmSync(CONFIG_PATH);

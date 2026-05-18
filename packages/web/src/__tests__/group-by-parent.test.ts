@@ -66,6 +66,40 @@ describe('groupByParent', () => {
     expect(groups[0]?.label).toBe('(root)');
   });
 
+  it('treats a top-level path "/alpha" as having an empty (root) parent', () => {
+    // dirname('/alpha') → '' because the only slash is at index 0.
+    const groups = groupByParent([p('alpha', '/alpha')]);
+    expect(groups).toHaveLength(1);
+    expect(groups[0]?.parentPath).toBe('');
+    expect(groups[0]?.label).toBe('(root)');
+    expect(groups[0]?.projects.map((x) => x.name)).toEqual(['alpha']);
+  });
+
+  it('treats a bare path "/" as having an empty (root) parent', () => {
+    // dirname('/') → '' (explicit guard for the root path).
+    const groups = groupByParent([p('rooted', '/')]);
+    expect(groups).toHaveLength(1);
+    expect(groups[0]?.parentPath).toBe('');
+    expect(groups[0]?.label).toBe('(root)');
+  });
+
+  it('treats a relative slash-free path "alpha" as having an empty parent', () => {
+    // dirname('alpha') → '' (lastIndexOf returns -1, idx <= 0).
+    const groups = groupByParent([p('alpha', 'alpha')]);
+    expect(groups).toHaveLength(1);
+    expect(groups[0]?.parentPath).toBe('');
+    expect(groups[0]?.projects.map((x) => x.name)).toEqual(['alpha']);
+  });
+
+  it('label uses the basename when the parent path has no leading slash', () => {
+    // basename('code') → 'code' (idx === -1 branch); the parent of
+    // 'code/alpha' is the slash-free string 'code'.
+    const groups = groupByParent([p('alpha', 'code/alpha')]);
+    expect(groups).toHaveLength(1);
+    expect(groups[0]?.parentPath).toBe('code');
+    expect(groups[0]?.label).toBe('code');
+  });
+
   it('returns empty array when no projects', () => {
     expect(groupByParent([])).toEqual([]);
   });

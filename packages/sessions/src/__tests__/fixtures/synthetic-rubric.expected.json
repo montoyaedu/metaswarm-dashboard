@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "sessionId": "sess-synth-2026-05-17",
+  "scoredAt": "2026-05-17T00:00:00.000Z",
+  "items": [
+    {
+      "key": "setup-discipline",
+      "label": "Setup discipline",
+      "verdict": "pass",
+      "evidence": "5 convention docs read before first write",
+      "pointer": {
+        "kind": "index",
+        "value": 7
+      }
+    },
+    {
+      "key": "planning",
+      "label": "Planning vs cowboy",
+      "verdict": "pass",
+      "evidence": "bd issue created/claimed before first src write",
+      "pointer": {
+        "kind": "index",
+        "value": 12
+      }
+    },
+    {
+      "key": "tdd",
+      "label": "TDD discipline",
+      "verdict": "pass",
+      "evidence": "4 production writes each followed its sibling test",
+      "pointer": null
+    },
+    {
+      "key": "error-handling",
+      "label": "Error handling",
+      "verdict": "pass",
+      "evidence": "2/2 tool errors got a corrective response",
+      "pointer": null
+    },
+    {
+      "key": "thrashing",
+      "label": "No thrashing",
+      "verdict": "pass",
+      "evidence": "0 thrash runs",
+      "pointer": null
+    },
+    {
+      "key": "cross-reference",
+      "label": "Cross-ref to context",
+      "verdict": "na",
+      "evidence": "single-package work",
+      "pointer": null
+    },
+    {
+      "key": "communication",
+      "label": "External communication",
+      "verdict": "pass",
+      "evidence": "closed/updated the bead and wrote an .agents/ note",
+      "pointer": {
+        "kind": "index",
+        "value": 67
+      }
+    },
+    {
+      "key": "prompt-coherence",
+      "label": "Coherence with prompt",
+      "verdict": "pass",
+      "evidence": "2/2 bd titles share a token with the first user prompt",
+      "pointer": null
+    },
+    {
+      "key": "workflow-touchpoints",
+      "label": "Workflow touchpoints",
+      "verdict": "pass",
+      "evidence": "bd + .agents/ + .coverage-thresholds.json (3 distinct)",
+      "pointer": null
+    }
+  ],
+  "overall": "pass"
+}
