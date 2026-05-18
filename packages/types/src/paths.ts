@@ -65,6 +65,27 @@ export function transcriptsDir(env: PathsEnv = defaultEnv()): string {
 }
 
 /**
+ * Resolve the directory holding Codex CLI run telemetry (rollout files).
+ *
+ * Precedence:
+ *   1. `METASWARM_DASHBOARD_CODEX_SESSIONS_DIR` env var (if set).
+ *   2. `~/.codex/sessions` (the default Codex CLI rollout location).
+ *
+ * Codex CLI writes one `rollout-<ts>-<uuid>.jsonl` per run under
+ * `~/.codex/sessions/<YYYY>/<MM>/<DD>/` on every OS, so the default is
+ * platform-independent — mirroring `transcriptsDir`. The rotated
+ * `~/.codex/archived_sessions/` tree is deliberately NOT covered by this
+ * helper (sessions-spike design §2 — out of scope for v5).
+ */
+export function codexSessionsDir(env: PathsEnv = defaultEnv()): string {
+  const override = env.env.METASWARM_DASHBOARD_CODEX_SESSIONS_DIR;
+  if (override !== undefined && override !== '') {
+    return expandHome(override, env.homeDir);
+  }
+  return join(env.homeDir, '.codex', 'sessions');
+}
+
+/**
  * Resolve the dashboard config file path.
  *
  * Precedence:

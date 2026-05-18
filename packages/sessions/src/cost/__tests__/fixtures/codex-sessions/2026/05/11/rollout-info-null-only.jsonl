@@ -1,0 +1,3 @@
+{"timestamp":"2026-05-11T13:23:58.733Z","type":"session_meta","payload":{"cwd":"/work/sample-repo"}}
+{"timestamp":"2026-05-11T13:23:58.735Z","type":"turn_context","payload":{"model":"gpt-5.5-codex"}}
+{"timestamp":"2026-05-11T13:23:43.552Z","type":"event_msg","payload":{"type":"token_count","info":null}}

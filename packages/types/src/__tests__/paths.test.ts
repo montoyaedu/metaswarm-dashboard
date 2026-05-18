@@ -8,6 +8,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   PathExpansionError,
+  codexSessionsDir,
   configFile,
   dataDir,
   defaultEnv,
@@ -147,6 +148,48 @@ describe('paths.transcriptsDir', () => {
 
   it('falls back to defaultEnv() when called with no argument', () => {
     expect(transcriptsDir().length).toBeGreaterThan(0);
+  });
+});
+
+describe('paths.codexSessionsDir', () => {
+  it('defaults to ~/.codex/sessions on every platform', () => {
+    for (const platform of ['darwin', 'linux', 'freebsd'] as const) {
+      expect(codexSessionsDir(env(platform))).toBe(
+        join(HOME, '.codex', 'sessions'),
+      );
+    }
+  });
+
+  it('METASWARM_DASHBOARD_CODEX_SESSIONS_DIR override wins on every platform', () => {
+    for (const platform of ['darwin', 'linux'] as const) {
+      expect(
+        codexSessionsDir(
+          env(platform, {
+            METASWARM_DASHBOARD_CODEX_SESSIONS_DIR: '/custom/codex',
+          }),
+        ),
+      ).toBe('/custom/codex');
+    }
+  });
+
+  it('ignores an empty-string override and falls back to the default', () => {
+    expect(
+      codexSessionsDir(
+        env('linux', { METASWARM_DASHBOARD_CODEX_SESSIONS_DIR: '' }),
+      ),
+    ).toBe(join(HOME, '.codex', 'sessions'));
+  });
+
+  it('expands ~ in the override via the home dir', () => {
+    expect(
+      codexSessionsDir(
+        env('linux', { METASWARM_DASHBOARD_CODEX_SESSIONS_DIR: '~/custom-codex' }),
+      ),
+    ).toBe(join(HOME, 'custom-codex'));
+  });
+
+  it('falls back to defaultEnv() when called with no argument', () => {
+    expect(codexSessionsDir().length).toBeGreaterThan(0);
   });
 });
 
