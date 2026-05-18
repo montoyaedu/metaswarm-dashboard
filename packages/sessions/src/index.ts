@@ -3,6 +3,11 @@
 // Re-exports the package's stable API so consumers (the v4 server, the SPA's
 // build) import from `@metaswarm-dashboard/sessions` rather than deep-importing
 // internal module paths.
+export { aggregateProjectCost } from './cost/aggregate.js';
+export type {
+  AggregateProjectCostInput,
+  ProjectSessionCosts,
+} from './cost/aggregate.js';
 export { resolveProjectForCwd } from './cost/attribution.js';
 export type { AttributionFsHooks } from './cost/attribution.js';
 export { CANONICAL_MODEL_ALIASES, costFor } from './cost/calculator.js';
