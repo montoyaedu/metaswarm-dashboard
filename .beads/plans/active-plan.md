@@ -2,8 +2,8 @@
 
 <!-- approved: 2026-05-18 -->
 <!-- gate-iterations: design-review 2 rounds (5/5 APPROVED), plan-review 2 rounds (3/3 PASS) -->
-<!-- user-approved: pending — awaiting operator execution-method choice -->
-<!-- execution-method: TBD -->
+<!-- user-approved: true — operator approved + chose orchestrated execution 2026-05-18 -->
+<!-- execution-method: metaswarm orchestrated execution (4-phase loop per WU) -->
 <!-- status: approved — execution blocked on the PR #6 (sessions-spike v4) merge -->
 
 Canonical plan: `docs/plan-sessions-v5.md`. Design:
@@ -36,9 +36,10 @@ v5-8 → v5-9 → v5-10.
 
 ## State
 - Gates: design-review 5/5 (2 rounds), plan-review 3/3 (2 rounds).
-- Execution NOT started — blocked on the PR #6 merge (design §2) and the
-  operator's execution-method choice.
-- Per-WU beads are created at execution kickoff.
+- Execution method: metaswarm orchestrated (operator-chosen 2026-05-18).
+- Execution NOT started — blocked solely on the PR #6 merge (design §2).
+  Kickoff after merge: rebase `sessions-v5` onto `main`, create the per-WU
+  beads, run v5-1 through the 4-phase loop.
 - Live state during execution: `.beads/context/execution-state.md`.
 
 ## Recovery
