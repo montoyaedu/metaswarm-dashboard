@@ -3,7 +3,7 @@
 <!-- gate-iterations: design-review 3 rounds (5/5 APPROVED), plan-review 3 rounds (3/3 PASS) -->
 <!-- user-approved: true -->
 <!-- execution-method: metaswarm orchestrated execution (4-phase loop per WU) -->
-<!-- status: in-progress -->
+<!-- status: complete -->
 
 Canonical plan: `docs/plan-sessions-v4.md`. Design: `docs/design-sessions-spike-v4.md`.
 Branch: `sessions-spike`. (Supersedes the stale Step-1 MVP plan previously in this file —
