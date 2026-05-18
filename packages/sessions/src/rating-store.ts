@@ -8,18 +8,38 @@
 //
 //   <dataDir>/projects/<projectName>/sessions/ratings/<sessionId>.rating.json
 //
-// This WU v4-5 module exposes the READ path (`ratingPath`, `readSessionRating`)
-// the three GET endpoints need. WU v4-6 adds `writeSessionRating` here as a
-// sibling — the layout helper `ratingPath` is shared by both.
+// This module exposes both the READ path (`ratingPath`, `readSessionRating`)
+// the three GET endpoints need and (WU v4-6) the WRITE path
+// (`writeSessionRating`) the `PUT .../rating` endpoint needs — the layout
+// helper `ratingPath` is shared by both.
 //
 // `projectName` and `sessionId` are attacker-influenceable (they originate
 // from route params / discovery), so they are sanitized against an allow-list
 // BEFORE any path join — identical to `writer.ts`'s `sanitizeSegment` (design
 // §8.2). A violation throws; it is never silently coerced.
+//
+// The write path additionally (a) validates the whole `SessionRating` against
+// its Zod schema before persisting, (b) writes via the shared
+// `atomicWriteJson` (temp-then-rename), and (c) re-checks containment against
+// the *realpath* of `dataDir` (design §8.3 / §11.5) so a symlink at the
+// dataDir root cannot redirect the write outside the resolved directory.
+// Because the path is day-independent, writing twice for the same
+// `(projectName, sessionId)` upserts the single file (design §13).
 
-import { readFileSync as nodeReadFileSync } from 'node:fs';
-import { join } from 'node:path';
+import {
+  mkdirSync,
+  readFileSync as nodeReadFileSync,
+  realpathSync,
+  renameSync,
+  unlinkSync,
+  writeFileSync,
+} from 'node:fs';
+import { join, sep } from 'node:path';
 
+import {
+  atomicWriteJson,
+  type WriterFsHooks,
+} from '@metaswarm-dashboard/types/fs-utils';
 import { SessionRating } from '@metaswarm-dashboard/types/ratings';
 
 /** Allow-list for a path segment. Excludes `/`, `\`, control chars, spaces. */
@@ -121,4 +141,107 @@ export function readSessionRating(
 
   const result = SessionRating.safeParse(parsed);
   return result.success ? result.data : null;
+}
+
+/**
+ * Injectable filesystem hooks for the rating WRITE path. Extends the
+ * `atomicWriteJson` hook set with `realpathSync` (used to resolve the real
+ * `dataDir` for containment). Defaults to `node:fs`.
+ *
+ * Only the synchronous string-returning call signature of `realpathSync` is
+ * required — the contract is intentionally narrower than `typeof realpathSync`
+ * (which also carries `.native`) so test stubs need not reproduce it.
+ */
+export type RatingWriterFsHooks = WriterFsHooks & {
+  realpathSync: (path: string) => string;
+};
+
+const DEFAULT_WRITER_FS: RatingWriterFsHooks = {
+  mkdirSync,
+  writeFileSync,
+  renameSync,
+  unlinkSync,
+  realpathSync,
+};
+
+/**
+ * Defense-in-depth containment assertion: throw unless `target` is `root`
+ * itself or sits strictly inside `root` (i.e. starts with `root + sep`).
+ *
+ * With sanitized segments this always holds for a well-formed `dataDir`, so
+ * it is a guard against a symlinked dataDir root, not against the segments.
+ *
+ * Exported so it can be unit-tested directly (the throw branch is otherwise
+ * unreachable for sanitized inputs) — mirroring `writer.ts`.
+ */
+export function assertRatingPathWithinRoot(target: string, root: string): void {
+  if (target !== root && !target.startsWith(root + sep)) {
+    throw new Error(
+      `rating path escapes data directory: ${JSON.stringify(target)} not within ${JSON.stringify(root)}`,
+    );
+  }
+}
+
+/**
+ * Atomically persist a `SessionRating` to the datalake. Returns the absolute
+ * path written.
+ *
+ * The layout is **day-independent** (design §13): one file per
+ * `(projectName, sessionId)`, never bucketed by calendar day. Writing a
+ * rating for the same `(projectName, sessionId)` twice therefore **upserts**
+ * the single file (`atomicWriteJson`'s rename overwrites) — a cross-day
+ * re-rate leaves exactly one file, not two.
+ *
+ * Steps: validate against the `SessionRating` Zod schema → sanitize the two
+ * attacker-influenceable path segments → resolve the *realpath* of `dataDir`
+ * → compose the target → re-assert containment → atomic write.
+ *
+ * @throws Error        if `rating` fails the `SessionRating` schema, if
+ *                      `projectName`/`sessionId` fails sanitization, or if the
+ *                      resolved target escapes the realpath of `dataDir`.
+ * @throws WriterError  if the underlying atomic write fails.
+ */
+export function writeSessionRating(
+  rating: SessionRating,
+  dataDir: string,
+  fs: RatingWriterFsHooks = DEFAULT_WRITER_FS,
+): string {
+  // 1. Validate the whole payload — never persist an off-schema rating.
+  const parsed = SessionRating.safeParse(rating);
+  if (!parsed.success) {
+    throw new Error(
+      `invalid SessionRating: ${parsed.error.issues
+        .map((i) => `${i.path.join('.')}: ${i.message}`)
+        .join('; ')}`,
+    );
+  }
+  const validated = parsed.data;
+
+  // 2. Sanitize attacker-influenceable segments BEFORE any path join. The
+  //    day-independent path is keyed by (projectName, sessionId) only.
+  const safeProject = sanitizeSegment('projectName', validated.projectName);
+  const safeSession = sanitizeSegment('sessionId', validated.sessionId);
+
+  // 3. Ensure dataDir exists so realpath can resolve it.
+  fs.mkdirSync(dataDir, { recursive: true });
+
+  // 4. Resolve the REAL root — defeats a symlink at the dataDir root (§11.5).
+  const root = fs.realpathSync(dataDir);
+
+  // 5. Compose the day-independent target path.
+  const target = join(
+    root,
+    'projects',
+    safeProject,
+    'sessions',
+    'ratings',
+    `${safeSession}${RATING_FILE_SUFFIX}`,
+  );
+
+  // 6. Containment assertion (defense-in-depth — catches a symlinked root).
+  assertRatingPathWithinRoot(target, root);
+
+  // 7. Atomically write; the rename overwrites, so a re-rate upserts.
+  atomicWriteJson(target, `${JSON.stringify(validated, null, 2)}\n`, fs);
+  return target;
 }

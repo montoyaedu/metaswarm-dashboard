@@ -98,7 +98,9 @@ describe('GET /api/agents', () => {
   });
 });
 
-describe('Method guard — 405 on non-GET /api/* requests', () => {
+describe('Method guard — 405 on non-allow-listed /api/* writes', () => {
+  // The v4-6 re-scope: GET + HEAD still pass through; exactly the one
+  // `PUT .../rating` route is allow-listed; everything else still 405s.
   for (const method of ['POST', 'PUT', 'DELETE', 'PATCH'] as const) {
     it(`${method} /api/projects returns 405 with Allow: GET`, async () => {
       const app = await makeApp();
@@ -107,6 +109,60 @@ describe('Method guard — 405 on non-GET /api/* requests', () => {
       expect(res.headers.allow).toBe('GET');
       const body = res.json();
       expect(body.error.code).toBe('method_not_allowed');
+      await app.close();
+    });
+  }
+
+  it('HEAD on an /api/* route still passes the guard (not 405)', async () => {
+    const app = await makeApp();
+    const res = await app.inject({ method: 'HEAD', url: '/api/projects' });
+    expect(res.statusCode).not.toBe(405);
+    expect(res.statusCode).toBe(200);
+    await app.close();
+  });
+
+  it('PUT on the exact rating route is NOT 405 (the allow-listed write)', async () => {
+    // The method-guard lets the PUT reach the route; the route then applies
+    // its own §8.1 contract. With no §8.1 headers it returns 415 — the point
+    // is only that the *method-guard* did not 405 it.
+    const app = await makeApp();
+    const res = await app.inject({
+      method: 'PUT',
+      url: '/api/sessions/alpha/sess-a1/rating',
+    });
+    expect(res.statusCode).not.toBe(405);
+    await app.close();
+  });
+
+  for (const method of ['POST', 'DELETE', 'PATCH'] as const) {
+    it(`${method} on the rating path is still 405 (only PUT is allow-listed)`, async () => {
+      const app = await makeApp();
+      const res = await app.inject({
+        method,
+        url: '/api/sessions/alpha/sess-a1/rating',
+      });
+      expect(res.statusCode).toBe(405);
+      expect(res.headers.allow).toBe('GET');
+      await app.close();
+    });
+  }
+
+  // Exact-match rejections — the allow-list must not re-open the surface
+  // (design §3.3, plan R2). Each of these is a PUT that LOOKS like the
+  // rating route but is not an exact match → still 405.
+  for (const { label, url } of [
+    { label: 'a trailing slash', url: '/api/sessions/alpha/sess-a1/rating/' },
+    { label: 'a query string', url: '/api/sessions/alpha/sess-a1/rating?x=1' },
+    { label: 'an extra path segment', url: '/api/sessions/alpha/sess-a1/rating/extra' },
+    { label: 'a case variant of the route', url: '/api/sessions/alpha/sess-a1/Rating' },
+    { label: 'a missing trailing segment', url: '/api/sessions/alpha/sess-a1' },
+    { label: 'an /api/sessions PUT (not a rating)', url: '/api/sessions' },
+  ]) {
+    it(`PUT with ${label} is still 405 (exact-match rejects it)`, async () => {
+      const app = await makeApp();
+      const res = await app.inject({ method: 'PUT', url });
+      expect(res.statusCode).toBe(405);
+      expect(res.headers.allow).toBe('GET');
       await app.close();
     });
   }

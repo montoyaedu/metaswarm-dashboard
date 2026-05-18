@@ -49,3 +49,67 @@ describe('SPA fallback edge cases', () => {
     await app.close();
   });
 });
+
+describe('Method guard — v4-6 re-scope (allow-list)', () => {
+  // The guard runs `onRequest`, before routing — these assertions exercise
+  // it independent of whether a matching route exists.
+  it('still 405s a non-allow-listed write on /api/* (HEAD pass-through preserved)', async () => {
+    mkdirSync(STATIC_ROOT, { recursive: true });
+    writeFileSync(join(STATIC_ROOT, 'index.html'), '<html><body>hi</body></html>', 'utf8');
+    const app = await buildServer({ dataDir: DATA_DIR, staticRoot: STATIC_ROOT });
+
+    const post = await app.inject({ method: 'POST', url: '/api/projects' });
+    expect(post.statusCode).toBe(405);
+    expect(post.headers.allow).toBe('GET');
+
+    // HEAD is a read method — the guard must NOT 405 it.
+    const head = await app.inject({ method: 'HEAD', url: '/api/projects' });
+    expect(head.statusCode).not.toBe(405);
+    await app.close();
+  });
+
+  it('does NOT 405 the one allow-listed PUT rating route', async () => {
+    mkdirSync(STATIC_ROOT, { recursive: true });
+    writeFileSync(join(STATIC_ROOT, 'index.html'), '<html><body>hi</body></html>', 'utf8');
+    const app = await buildServer({ dataDir: DATA_DIR, staticRoot: STATIC_ROOT });
+    const res = await app.inject({
+      method: 'PUT',
+      url: '/api/sessions/alpha/sess-a1/rating',
+    });
+    // Past the guard — the route's §8.1 contract takes over (415 here, since
+    // no Content-Type was sent). The point is it is NOT a 405.
+    expect(res.statusCode).not.toBe(405);
+    await app.close();
+  });
+
+  it('still 405s a PUT that only resembles the rating route (trailing slash / query / extra segment / case variant)', async () => {
+    mkdirSync(STATIC_ROOT, { recursive: true });
+    writeFileSync(join(STATIC_ROOT, 'index.html'), '<html><body>hi</body></html>', 'utf8');
+    const app = await buildServer({ dataDir: DATA_DIR, staticRoot: STATIC_ROOT });
+    for (const url of [
+      '/api/sessions/alpha/sess-a1/rating/',
+      '/api/sessions/alpha/sess-a1/rating?x=1',
+      '/api/sessions/alpha/sess-a1/rating/extra',
+      '/api/sessions/alpha/sess-a1/Rating',
+    ]) {
+      const res = await app.inject({ method: 'PUT', url });
+      expect(res.statusCode).toBe(405);
+      expect(res.headers.allow).toBe('GET');
+    }
+    await app.close();
+  });
+
+  it('still 405s POST/DELETE/PATCH on the exact rating path (only PUT is allowed)', async () => {
+    mkdirSync(STATIC_ROOT, { recursive: true });
+    writeFileSync(join(STATIC_ROOT, 'index.html'), '<html><body>hi</body></html>', 'utf8');
+    const app = await buildServer({ dataDir: DATA_DIR, staticRoot: STATIC_ROOT });
+    for (const method of ['POST', 'DELETE', 'PATCH'] as const) {
+      const res = await app.inject({
+        method,
+        url: '/api/sessions/alpha/sess-a1/rating',
+      });
+      expect(res.statusCode).toBe(405);
+    }
+    await app.close();
+  });
+});

@@ -462,11 +462,12 @@ describe('discoverSessions', () => {
 });
 
 describe('@metaswarm-dashboard/sessions public surface', () => {
-  it('exports exactly the v4-5 public value set', () => {
+  it('exports exactly the v4-6 public value set', () => {
     // After WU v4-4 the barrel re-exports the v3-built modules plus the
-    // discovery module; WU v4-5 adds the rating-store read helpers
-    // (`ratingPath`, `readSessionRating`). `writeSessionRating` is added
-    // later by WU v4-6.
+    // discovery module; WU v4-5 added the rating-store read helpers
+    // (`ratingPath`, `readSessionRating`); WU v4-6 adds the write helper
+    // `writeSessionRating`. (`assertRatingPathWithinRoot` is a `rating-store`
+    // internal — unit-tested directly, NOT re-exported from the barrel.)
     const valueExports = Object.keys(sessions).sort();
     expect(valueExports).toEqual([
       'discoverSessions',
@@ -475,6 +476,7 @@ describe('@metaswarm-dashboard/sessions public surface', () => {
       'ratingPath',
       'readSessionRating',
       'scoreTimeline',
+      'writeSessionRating',
     ]);
   });
 
@@ -485,5 +487,6 @@ describe('@metaswarm-dashboard/sessions public surface', () => {
     expect(typeof sessions.encodeTranscriptDirName).toBe('function');
     expect(typeof sessions.ratingPath).toBe('function');
     expect(typeof sessions.readSessionRating).toBe('function');
+    expect(typeof sessions.writeSessionRating).toBe('function');
   });
 });

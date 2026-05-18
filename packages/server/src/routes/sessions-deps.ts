@@ -40,3 +40,33 @@ export interface CalibrationRouteDeps {
   /** Injected clock for a deterministic `generatedAt`. */
   now: () => Date;
 }
+
+/**
+ * Dependencies the `PUT /api/sessions/:project/:sessionId/rating` handler
+ * needs (sessions-spike WU v4-6, design §7 / §8.1). The narrow interface is
+ * the type-checked seam between `buildServer` and the write handler.
+ */
+export interface WriteRatingRouteDeps {
+  /** The loaded dashboard config (its `projects[].path` are absolute). */
+  config: Config;
+  /** The transcripts root scanned by discovery. */
+  transcriptsDir: string;
+  /** The datalake root the rating is persisted under. */
+  dataDir: string;
+  /** Live discovery — maps the config to path-level `SessionRef`s. */
+  discoverSessions: (config: Config, transcriptsDir: string) => SessionRef[];
+  /**
+   * The mtime/size-keyed parse + score cache — the handler re-derives
+   * `rubricAtRating` server-side from the live transcript via this cache.
+   */
+  cache: TranscriptCache;
+  /** Persist a validated `SessionRating`; returns the path written. */
+  writeSessionRating: (rating: SessionRating, dataDir: string) => string;
+  /** Injected clock for a deterministic `ratedAt`. */
+  now: () => Date;
+  /**
+   * Advisory footgun check — logs a warning if `dataDir` sits inside a git
+   * working tree (design §8.3). Called on every successful write.
+   */
+  warnIfDataDirInGit: (dataDir: string) => void;
+}

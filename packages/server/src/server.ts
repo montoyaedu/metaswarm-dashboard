@@ -8,6 +8,7 @@ import {
   parseTranscript,
   readSessionRating,
   scoreTimeline,
+  writeSessionRating,
 } from '@metaswarm-dashboard/sessions';
 import { loadConfig, type Config } from '@metaswarm-dashboard/types/config';
 import {
@@ -20,6 +21,7 @@ import {
 import Fastify, { type FastifyInstance } from 'fastify';
 
 import { aggregateCalibration } from './data/calibration.js';
+import { warnIfDataDirInGit } from './data/git-footgun.js';
 import { SnapshotReader } from './data/snapshot-reader.js';
 import { createTranscriptCache } from './data/transcript-cache.js';
 import { registerMethodGuard } from './plugins/method-guard.js';
@@ -28,6 +30,7 @@ import { registerAgentsRoute } from './routes/agents.js';
 import { registerCalibrationRoute } from './routes/calibration.js';
 import { registerProjectsByNameRoute } from './routes/projects-by-name.js';
 import { registerProjectsRoute } from './routes/projects.js';
+import { registerRatingWriteRoute } from './routes/rating-write.js';
 import { registerSessionsRoutes } from './routes/sessions.js';
 
 /**
@@ -122,6 +125,24 @@ export async function buildServer(opts: BuildServerOptions): Promise<FastifyInst
       readSessionRating(dataDir, projectName, sessionId),
     cache,
   });
+
+  // v4-6 sessions WRITE API — the one write surface. `rubricAtRating` is
+  // re-derived server-side from the shared parse+score `cache`; the client
+  // body cannot inject it (design §8.3).
+  registerRatingWriteRoute(app, {
+    config: sessionsOpts.config,
+    transcriptsDir: sessionsOpts.transcriptsDir,
+    dataDir: sessionsOpts.dataDir,
+    discoverSessions: (config, transcriptsDir) =>
+      discoverSessions(config, transcriptsDir),
+    cache,
+    writeSessionRating: (rating, dataDir) => writeSessionRating(rating, dataDir),
+    now,
+    warnIfDataDirInGit: (dataDir) => {
+      warnIfDataDirInGit(dataDir, (line) => app.log.warn(line));
+    },
+  });
+
   registerCalibrationRoute(app, {
     dataDir: sessionsOpts.dataDir,
     aggregateCalibration: (dataDir, asOf) => aggregateCalibration(dataDir, asOf),

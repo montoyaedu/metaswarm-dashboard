@@ -1,4 +1,4 @@
-// Tests for the rating store (sessions-spike WU v4-5, design §13).
+// Tests for the rating store (sessions-spike WU v4-5/v4-6, design §13).
 //
 // Covers: the day-independent path layout
 // (<dataDir>/projects/<name>/sessions/ratings/<sessionId>.rating.json),
@@ -6,12 +6,17 @@
 // resolving to `null`, and a valid rating round-trip. The injectable fs
 // hooks let every branch run without `/* v8 ignore */`.
 //
-// WU v4-6 will add `writeSessionRating` to the same module; this WU only
-// exercises the read path.
+// WU v4-6 adds `writeSessionRating` to the same module — the write path:
+// schema validation, sanitization, atomic write, realpath containment, and
+// the **idempotent upsert** (a re-rate for the same (project, sessionId)
+// overwrites the single day-independent file, never duplicating it).
 
 import {
   mkdirSync,
   mkdtempSync,
+  readdirSync,
+  readFileSync,
+  realpathSync,
   rmSync,
   writeFileSync,
 } from 'node:fs';
@@ -23,9 +28,12 @@ import type { ProcessRubricScore, RubricKey } from '@metaswarm-dashboard/types/s
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import {
+  assertRatingPathWithinRoot,
   ratingPath,
   readSessionRating,
+  writeSessionRating,
   type RatingStoreFsHooks,
+  type RatingWriterFsHooks,
 } from '../rating-store.js';
 
 let TMP: string;
@@ -192,5 +200,146 @@ describe('readSessionRating', () => {
       readFileSync: () => JSON.stringify(rating),
     };
     expect(readSessionRating(TMP, 'proj', 'sess', fs)).toEqual(rating);
+  });
+});
+
+// --- writeSessionRating ----------------------------------------------------
+
+describe('writeSessionRating', () => {
+  it('atomically persists a valid rating and returns the written path', () => {
+    const rating = makeRating();
+    const written = writeSessionRating(rating, TMP);
+    // The returned path is rooted at the *realpath* of dataDir (macOS
+    // resolves /var → /private/var); compose the expected path from that.
+    expect(written).toBe(
+      ratingPath(realpathSync(TMP), 'my-project', 'session-abc'),
+    );
+
+    const onDisk = JSON.parse(readFileSync(written, 'utf8')) as SessionRating;
+    expect(onDisk).toEqual(rating);
+  });
+
+  it('round-trips through readSessionRating', () => {
+    const rating = makeRating({ projectName: 'proj', sessionId: 'sess' });
+    writeSessionRating(rating, TMP);
+    expect(readSessionRating(TMP, 'proj', 'sess')).toEqual(rating);
+  });
+
+  it('is an idempotent upsert — writing twice leaves exactly ONE file', () => {
+    const first = makeRating({ projectName: 'proj', sessionId: 'sess' });
+    writeSessionRating(first, TMP);
+
+    // Re-rate the SAME (project, sessionId) with different verdicts.
+    const second: SessionRating = {
+      ...first,
+      verdicts: [
+        { key: 'planning', verdict: 'fail', scoredAt: '2026-05-18T10:00:00.000Z' },
+      ],
+      ratedAt: '2026-05-18T10:00:00.000Z',
+    };
+    writeSessionRating(second, TMP);
+
+    const ratingsDir = join(TMP, 'projects', 'proj', 'sessions', 'ratings');
+    const files = readdirSync(ratingsDir);
+    expect(files).toEqual(['sess.rating.json']);
+
+    // The single file holds the SECOND (latest) rating, not a duplicate.
+    expect(readSessionRating(TMP, 'proj', 'sess')).toEqual(second);
+  });
+
+  it('upsert is day-independent — a cross-day re-rate does not bucket by date', () => {
+    const day1: SessionRating = {
+      ...makeRating({ projectName: 'p', sessionId: 's' }),
+      ratedAt: '2026-01-01T00:00:00.000Z',
+    };
+    const day2: SessionRating = {
+      ...makeRating({ projectName: 'p', sessionId: 's' }),
+      ratedAt: '2026-12-31T23:59:59.000Z',
+    };
+    const p1 = writeSessionRating(day1, TMP);
+    const p2 = writeSessionRating(day2, TMP);
+    // Same path regardless of `ratedAt` — no YYYY-MM-DD segment.
+    expect(p1).toBe(p2);
+    expect(p1).not.toMatch(/\d{4}-\d{2}-\d{2}/);
+    const ratingsDir = join(TMP, 'projects', 'p', 'sessions', 'ratings');
+    expect(readdirSync(ratingsDir)).toHaveLength(1);
+  });
+
+  it('rejects a rating that fails the SessionRating Zod schema', () => {
+    const bad = { ...makeRating(), schemaVersion: 99 } as unknown as SessionRating;
+    expect(() => writeSessionRating(bad, TMP)).toThrow(/SessionRating/);
+  });
+
+  it('rejects a rating whose verdicts contain a duplicate key', () => {
+    const bad: SessionRating = {
+      ...makeRating(),
+      verdicts: [
+        { key: 'tdd', verdict: 'pass', scoredAt: '2026-05-17T09:00:00.000Z' },
+        { key: 'tdd', verdict: 'fail', scoredAt: '2026-05-17T09:00:00.000Z' },
+      ],
+    };
+    expect(() => writeSessionRating(bad, TMP)).toThrow(/SessionRating/);
+  });
+
+  it('rejects a projectName with a path separator', () => {
+    const bad = makeRating({ projectName: `bad${sep}name` });
+    expect(() => writeSessionRating(bad, TMP)).toThrow(/projectName/);
+  });
+
+  it('rejects a sessionId containing ".."', () => {
+    const bad = makeRating({ sessionId: 'a..b' });
+    expect(() => writeSessionRating(bad, TMP)).toThrow(/sessionId/);
+  });
+
+  it('rejects a projectName containing ".."', () => {
+    const bad = makeRating({ projectName: '..' });
+    expect(() => writeSessionRating(bad, TMP)).toThrow(/projectName/);
+  });
+
+  it('writes via injected fs hooks (atomic + realpath stubbed)', () => {
+    const rating = makeRating({ projectName: 'proj', sessionId: 'sess' });
+    const writes = new Map<string, string>();
+    const fs: RatingWriterFsHooks = {
+      mkdirSync: () => undefined,
+      writeFileSync: ((p: string, data: string) => {
+        writes.set(p, data);
+      }) as RatingWriterFsHooks['writeFileSync'],
+      renameSync: ((from: string, to: string) => {
+        writes.set(to, writes.get(from) ?? '');
+        writes.delete(from);
+      }) as RatingWriterFsHooks['renameSync'],
+      unlinkSync: () => undefined,
+      realpathSync: (p: string) => p,
+    };
+    const written = writeSessionRating(rating, TMP, fs);
+    expect(JSON.parse(writes.get(written) ?? '')).toEqual(rating);
+  });
+
+});
+
+// --- assertRatingPathWithinRoot --------------------------------------------
+
+describe('assertRatingPathWithinRoot', () => {
+  it('accepts the root itself', () => {
+    expect(() => assertRatingPathWithinRoot('/data', '/data')).not.toThrow();
+  });
+
+  it('accepts a target strictly inside the root', () => {
+    expect(() =>
+      assertRatingPathWithinRoot(join('/data', 'projects', 'p'), '/data'),
+    ).not.toThrow();
+  });
+
+  it('throws when the target escapes the root', () => {
+    expect(() => assertRatingPathWithinRoot('/elsewhere/x', '/data')).toThrow(
+      /escapes/,
+    );
+  });
+
+  it('throws on a sibling whose name shares the root prefix', () => {
+    // `/data-evil` starts with `/data` but is NOT inside `/data/`.
+    expect(() => assertRatingPathWithinRoot('/data-evil', '/data')).toThrow(
+      /escapes/,
+    );
   });
 });
