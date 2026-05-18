@@ -8,6 +8,11 @@ export type { AttributionFsHooks } from './cost/attribution.js';
 export { CANONICAL_MODEL_ALIASES, costFor } from './cost/calculator.js';
 export { discoverCodexRuns, readCodexRollout } from './cost/codex-reader.js';
 export type { CodexReaderFsHooks, CodexWalkOptions } from './cost/codex-reader.js';
+export { discoverGeminiRuns } from './cost/ledger-reader.js';
+export type {
+  LedgerReaderFsHooks,
+  LedgerReaderOptions,
+} from './cost/ledger-reader.js';
 export { loadPricingTable, pricingTableHash } from './cost/pricing.js';
 export { computeSessionCost } from './cost/session-cost.js';
 export { parseTranscript, parseTranscriptUsage } from './jsonl-reader.js';

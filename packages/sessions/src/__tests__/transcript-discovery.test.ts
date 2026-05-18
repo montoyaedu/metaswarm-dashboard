@@ -462,7 +462,7 @@ describe('discoverSessions', () => {
 });
 
 describe('@metaswarm-dashboard/sessions public surface', () => {
-  it('exports exactly the v5-3 public value set', () => {
+  it('exports exactly the v5-4 public value set', () => {
     // After WU v4-4 the barrel re-exports the v3-built modules plus the
     // discovery module; WU v4-5 added the rating-store read helpers
     // (`ratingPath`, `readSessionRating`); WU v4-6 added the write helper
@@ -470,7 +470,8 @@ describe('@metaswarm-dashboard/sessions public surface', () => {
     // (`costFor`, `CANONICAL_MODEL_ALIASES`, `loadPricingTable`,
     // `pricingTableHash`, `resolveProjectForCwd`); WU v5-2 added the Claude
     // usage carrier `parseTranscriptUsage` and `computeSessionCost`; WU v5-3
-    // adds the Codex rollout reader (`discoverCodexRuns`, `readCodexRollout`).
+    // added the Codex rollout reader (`discoverCodexRuns`, `readCodexRollout`);
+    // WU v5-4 adds the Gemini ledger reader (`discoverGeminiRuns`).
     // (`assertRatingPathWithinRoot` is a `rating-store` internal —
     // unit-tested directly, NOT re-exported from the barrel.)
     const valueExports = Object.keys(sessions).sort();
@@ -479,6 +480,7 @@ describe('@metaswarm-dashboard/sessions public surface', () => {
       'computeSessionCost',
       'costFor',
       'discoverCodexRuns',
+      'discoverGeminiRuns',
       'discoverSessions',
       'encodeTranscriptDirName',
       'loadPricingTable',

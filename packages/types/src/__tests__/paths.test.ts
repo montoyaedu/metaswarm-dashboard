@@ -13,6 +13,7 @@ import {
   dataDir,
   defaultEnv,
   expandHome,
+  externalToolsLedger,
   transcriptsDir,
   type PathsEnv,
 } from '../paths.js';
@@ -190,6 +191,50 @@ describe('paths.codexSessionsDir', () => {
 
   it('falls back to defaultEnv() when called with no argument', () => {
     expect(codexSessionsDir().length).toBeGreaterThan(0);
+  });
+});
+
+describe('paths.externalToolsLedger', () => {
+  it('defaults to ~/.claude/sessions/external-tools.jsonl on every platform', () => {
+    for (const platform of ['darwin', 'linux', 'freebsd'] as const) {
+      expect(externalToolsLedger(env(platform))).toBe(
+        join(HOME, '.claude', 'sessions', 'external-tools.jsonl'),
+      );
+    }
+  });
+
+  it('METASWARM_DASHBOARD_EXTERNAL_TOOLS_LEDGER override wins on every platform', () => {
+    for (const platform of ['darwin', 'linux'] as const) {
+      expect(
+        externalToolsLedger(
+          env(platform, {
+            METASWARM_DASHBOARD_EXTERNAL_TOOLS_LEDGER: '/custom/ledger.jsonl',
+          }),
+        ),
+      ).toBe('/custom/ledger.jsonl');
+    }
+  });
+
+  it('ignores an empty-string override and falls back to the default', () => {
+    expect(
+      externalToolsLedger(
+        env('linux', { METASWARM_DASHBOARD_EXTERNAL_TOOLS_LEDGER: '' }),
+      ),
+    ).toBe(join(HOME, '.claude', 'sessions', 'external-tools.jsonl'));
+  });
+
+  it('expands ~ in the override via the home dir', () => {
+    expect(
+      externalToolsLedger(
+        env('linux', {
+          METASWARM_DASHBOARD_EXTERNAL_TOOLS_LEDGER: '~/custom-ledger.jsonl',
+        }),
+      ),
+    ).toBe(join(HOME, 'custom-ledger.jsonl'));
+  });
+
+  it('falls back to defaultEnv() when called with no argument', () => {
+    expect(externalToolsLedger().length).toBeGreaterThan(0);
   });
 });
 
