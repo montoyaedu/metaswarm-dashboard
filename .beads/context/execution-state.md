@@ -15,8 +15,8 @@
 | v5-2 Claude cost parse | ecq | ✅ COMMITTED |
 | v5-3 Codex reader | e89 | ✅ COMMITTED |
 | v5-4 Gemini ledger reader | r2x | ✅ COMMITTED |
-| v5-5 aggregation | byq | ▶ IN PROGRESS |
-| v5-6 ai-title + schema | bvk | blocked ← v5-2 |
+| v5-5 aggregation | byq | ✅ COMMITTED |
+| v5-6 ai-title + schema | bvk | ▶ IN PROGRESS |
 | v5-7 server API | 4s0 | blocked ← v5-5,6 — **HUMAN CHECKPOINT** |
 | v5-8 F1 survey panel | 7b3 | blocked ← v5-6,7 |
 | v5-9 F2 cost widgets list/detail | oiw | blocked ← v5-7,8 |
