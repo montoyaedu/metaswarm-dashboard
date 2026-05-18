@@ -3,6 +3,10 @@
 // Re-exports the package's stable API so consumers (the v4 server, the SPA's
 // build) import from `@metaswarm-dashboard/sessions` rather than deep-importing
 // internal module paths.
+export { resolveProjectForCwd } from './cost/attribution.js';
+export type { AttributionFsHooks } from './cost/attribution.js';
+export { CANONICAL_MODEL_ALIASES, costFor } from './cost/calculator.js';
+export { loadPricingTable, pricingTableHash } from './cost/pricing.js';
 export { parseTranscript } from './jsonl-reader.js';
 export { ratingPath, readSessionRating, writeSessionRating } from './rating-store.js';
 export type { RatingStoreFsHooks, RatingWriterFsHooks } from './rating-store.js';

@@ -33,6 +33,10 @@
       "types": "./dist/config.d.ts",
       "import": "./dist/config.js"
     },
+    "./cost": {
+      "types": "./dist/cost.d.ts",
+      "import": "./dist/cost.js"
+    },
     "./ratings": {
       "types": "./dist/ratings.d.ts",
       "import": "./dist/ratings.js"
