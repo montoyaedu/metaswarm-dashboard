@@ -1,15 +1,16 @@
 <script setup lang="ts">
-// Session detail — the READ side (design §6.3). Renders a header and the
-// event timeline. The rating survey + rubric verdicts are WU v4-8; this view
-// deliberately renders neither.
+// Session detail — renders a header, the event timeline, and (WU v4-8) the
+// per-session rating survey below the timeline (design §6.3).
 //
 // SECURITY: all transcript-derived content flows through child components
 // that interpolate it as TEXT — `v-html` is never used here. See §6.3 / §11.
 
+import type { SessionRating } from '@metaswarm-dashboard/types/ratings';
 import { NButton, NSkeleton } from 'naive-ui';
 import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
+import RatingSurvey from '../components/RatingSurvey.vue';
 import SessionEventTimeline from '../components/SessionEventTimeline.vue';
 import { useSessionDetail } from '../composables/useSessionDetail.js';
 import { isInProgress } from '../lib/session-format.js';
@@ -43,6 +44,14 @@ const inProgress = computed(() => {
 
 function goBack(): void {
   void router.push({ name: 'sessions' });
+}
+
+/** Reflect a freshly-saved rating in local state so a re-rate pre-populates.
+ *  The survey only renders inside the `v-else-if="detail"` block, so
+ *  `detail.value` is always non-null when this `@saved` handler fires. */
+function onRatingSaved(rating: SessionRating): void {
+  /* v8 ignore next — `detail` is non-null whenever the survey is mounted. */
+  if (detail.value !== null) detail.value.rating = rating;
 }
 </script>
 
@@ -86,6 +95,14 @@ function goBack(): void {
       </header>
 
       <SessionEventTimeline :events="detail.timeline.events" />
+
+      <RatingSurvey
+        :project="project"
+        :session-id="sessionId"
+        :rubric="detail.rubric"
+        :rating="detail.rating"
+        @saved="onRatingSaved"
+      />
     </template>
   </main>
 </template>

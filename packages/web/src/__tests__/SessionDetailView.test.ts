@@ -283,11 +283,70 @@ describe('SessionDetailView', () => {
     restore();
   });
 
-  it('does NOT render the rating survey or rubric verdicts (WU v4-8 owns those)', async () => {
+  it('renders the rating survey below the timeline (WU v4-8)', async () => {
     const restore = withFetch(() => ({ timeline: makeTimeline(), rubric: RUBRIC, rating: null }));
+    const w = await mountDetail(makeRouter());
+    const survey = w.find('[data-testid="rating-survey"]');
+    expect(survey.exists()).toBe(true);
+    // 9 KPI rows, one per RubricKey.
+    expect(survey.findAll('[data-testid^="survey-row-"]')).toHaveLength(9);
+    restore();
+  });
+
+  it('does not render the survey while loading / on error / on 404', async () => {
+    const restore = withFetch(() => new Response('not found', { status: 404 }));
     const w = await mountDetail(makeRouter());
     expect(w.find('[data-testid="rating-survey"]').exists()).toBe(false);
     restore();
+  });
+
+  it('a survey save persists the rating into the view state (onRatingSaved)', async () => {
+    // GET the detail (rating: null), then PUT a rating via the survey. The
+    // view's @saved handler must reflect the persisted rating in local state.
+    const persistedRating = {
+      schemaVersion: 1 as const,
+      sessionId: 'sess-a1',
+      projectName: 'alpha',
+      verdicts: [
+        {
+          key: 'setup-discipline' as const,
+          verdict: 'pass' as const,
+          scoredAt: '2026-05-17T09:00:00.000Z',
+        },
+      ],
+      ratedAt: '2026-05-17T09:00:01.000Z',
+      rubricAtRating: RUBRIC,
+    };
+    const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method === 'PUT') {
+        return Promise.resolve(
+          new Response(JSON.stringify(persistedRating), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          }),
+        );
+      }
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({ timeline: makeTimeline(), rubric: RUBRIC, rating: null }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        ),
+      );
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const w = await mountDetail(makeRouter());
+    // Pick a verdict and save.
+    await w.find('[data-testid="survey-verdict-0-pass"] input').setValue();
+    await flushPromises();
+    await w.find('[data-testid="survey-save"]').trigger('click');
+    await flushPromises();
+
+    // The agree/disagree badge appears only once the view holds a saved rating.
+    expect(w.find('[data-testid="survey-agreement-0"]').exists()).toBe(true);
+    const putCalls = fetchMock.mock.calls.filter((c) => c[1]?.method === 'PUT');
+    expect(putCalls).toHaveLength(1);
+    vi.unstubAllGlobals();
   });
 
   it('the back button navigates to the sessions list', async () => {

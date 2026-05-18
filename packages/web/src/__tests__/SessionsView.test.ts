@@ -49,7 +49,20 @@ const BETA: SessionSummary = {
   rated: false,
 };
 
-/** Stub fetch for /api/sessions; captures the URLs requested. */
+/** An all-zero calibration summary — the SessionsView panel fetches this. */
+const EMPTY_CALIBRATION = {
+  schemaVersion: 1,
+  generatedAt: '2026-05-17T12:00:00.000Z',
+  ratedSessionCount: 0,
+  perKpi: [],
+};
+
+/**
+ * Stub fetch for /api/sessions; captures the URLs requested. The SessionsView
+ * now also mounts the CalibrationSummaryPanel, which fetches /api/calibration
+ * — that URL is answered with a benign empty summary so the panel renders its
+ * empty state and never interferes with the list assertions.
+ */
 function withFetch(
   responder: (project: string | null) => { sessions: SessionSummary[] } | Response,
 ): { restore: () => void; urls: string[] } {
@@ -58,6 +71,14 @@ function withFetch(
     const url =
       typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
     urls.push(url);
+    if (url.includes('/api/calibration')) {
+      return Promise.resolve(
+        new Response(JSON.stringify({ summary: EMPTY_CALIBRATION }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+      );
+    }
     const project = new URL(url, 'http://x').searchParams.get('project');
     const out = responder(project);
     if (out instanceof Response) return Promise.resolve(out);
@@ -111,12 +132,15 @@ describe('SessionsView', () => {
     restore();
   });
 
-  it('does NOT show any rubric verdict in the list (anti-anchoring)', async () => {
+  it('does NOT show any rubric verdict in the session list (anti-anchoring)', async () => {
     const { restore } = withFetch(() => ({ sessions: [ALPHA, BETA] }));
     const w = await mountAt(makeRouter());
-    const text = w.text().toLowerCase();
-    expect(text).not.toContain('verdict');
-    expect(text).not.toContain('rubric');
+    // Scope the assertion to the list table — the calibration panel above it
+    // legitimately mentions the rubric (design §6.4); the per-session ROWS
+    // must not, so the operator's list-level read stays unanchored.
+    const tableText = w.find('[data-testid="sessions-table"]').text().toLowerCase();
+    expect(tableText).not.toContain('verdict');
+    expect(tableText).not.toContain('rubric');
     restore();
   });
 
@@ -202,13 +226,25 @@ describe('SessionsView', () => {
   });
 
   it('shows a loading skeleton before the fetch resolves', async () => {
+    // Only the /api/sessions request is held pending; /api/calibration (the
+    // panel's fetch) is answered immediately so the SessionsView skeleton is
+    // the only thing still loading.
     let resolve: ((r: Response) => void) | undefined;
-    const fetchMock = vi.fn(
-      () =>
-        new Promise<Response>((r) => {
-          resolve = r;
-        }),
-    );
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const url =
+        typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+      if (url.includes('/api/calibration')) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ summary: EMPTY_CALIBRATION }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          }),
+        );
+      }
+      return new Promise<Response>((r) => {
+        resolve = r;
+      });
+    });
     vi.stubGlobal('fetch', fetchMock);
     const router = makeRouter();
     const w = mount(App, { global: { plugins: [router] } });

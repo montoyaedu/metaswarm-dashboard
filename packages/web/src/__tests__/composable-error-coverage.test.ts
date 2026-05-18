@@ -31,7 +31,12 @@ function rejectingRatingsApi(thrown: unknown): RatingsApi {
     Promise.resolve().then(() => {
       throw thrown;
     });
-  return { getSessions: reject, getSession: reject, getCalibration: reject };
+  return {
+    getSessions: reject,
+    getSession: reject,
+    getCalibration: reject,
+    putRating: reject,
+  };
 }
 
 describe('Composables — non-Error rejection branch', () => {

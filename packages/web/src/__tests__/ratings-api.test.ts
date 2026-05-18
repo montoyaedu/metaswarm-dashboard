@@ -1,7 +1,12 @@
 // WU v4-7 — typed GET-only read client for the v4-5 session endpoints.
+// WU v4-8 — adds `putRating` (the one sanctioned write call).
 // Each method: success parse (envelope unwrapped) + non-2xx → thrown error.
 
-import type { CalibrationSummary } from '@metaswarm-dashboard/types/ratings';
+import type {
+  CalibrationSummary,
+  OperatorVerdict,
+  SessionRating,
+} from '@metaswarm-dashboard/types/ratings';
 import type {
   ProcessRubricScore,
   SessionSummary,
@@ -181,5 +186,98 @@ describe('ratings-api — getCalibration', () => {
     ) as unknown as typeof fetch;
     const api = createRatingsApi('', fetchImpl);
     await expect(api.getCalibration()).rejects.toThrow(RatingsApiError);
+  });
+});
+
+describe('ratings-api — putRating', () => {
+  const VERDICTS: OperatorVerdict[] = [
+    {
+      key: 'planning',
+      verdict: 'pass',
+      scoredAt: '2026-05-17T09:00:00.000Z',
+    },
+  ];
+
+  const PERSISTED: SessionRating = {
+    schemaVersion: 1,
+    sessionId: 'sess-a1',
+    projectName: 'alpha',
+    verdicts: VERDICTS,
+    overallNote: 'looked good',
+    ratedAt: '2026-05-17T09:00:01.000Z',
+    rubricAtRating: RUBRIC,
+  };
+
+  it('PUTs /api/sessions/:project/:sessionId/rating with a JSON body', async () => {
+    let seenUrl = '';
+    let seenInit: RequestInit | undefined;
+    const fetchImpl = vi.fn((url: string, init?: RequestInit) => {
+      seenUrl = url;
+      seenInit = init;
+      return Promise.resolve(jsonResponse(PERSISTED));
+    }) as unknown as typeof fetch;
+    const api = createRatingsApi('', fetchImpl);
+
+    const out = await api.putRating('alpha', 'sess-a1', {
+      verdicts: VERDICTS,
+      overallNote: 'looked good',
+    });
+
+    expect(seenUrl).toBe('/api/sessions/alpha/sess-a1/rating');
+    expect(seenInit?.method).toBe('PUT');
+    expect((seenInit?.headers as Record<string, string>)['Content-Type']).toBe(
+      'application/json',
+    );
+    expect(JSON.parse(seenInit?.body as string)).toEqual({
+      verdicts: VERDICTS,
+      overallNote: 'looked good',
+    });
+    expect(out).toEqual(PERSISTED);
+  });
+
+  it('encodes both path segments', async () => {
+    const calls: string[] = [];
+    const fetchImpl = vi.fn((url: string) => {
+      calls.push(url);
+      return Promise.resolve(jsonResponse(PERSISTED));
+    }) as unknown as typeof fetch;
+    const api = createRatingsApi('http://server', fetchImpl);
+    await api.putRating('weird proj', 'weird id', { verdicts: VERDICTS });
+    expect(calls[0]).toBe('http://server/api/sessions/weird%20proj/weird%20id/rating');
+  });
+
+  it('omits overallNote from the body when it is not supplied', async () => {
+    let sentBody = '';
+    const fetchImpl = vi.fn((_url: string, init?: RequestInit) => {
+      sentBody = init?.body as string;
+      return Promise.resolve(jsonResponse(PERSISTED));
+    }) as unknown as typeof fetch;
+    const api = createRatingsApi('', fetchImpl);
+    await api.putRating('alpha', 'sess-a1', { verdicts: VERDICTS });
+    expect(JSON.parse(sentBody)).toEqual({ verdicts: VERDICTS });
+  });
+
+  it('returns the persisted SessionRating from the response body', async () => {
+    const fetchImpl = vi.fn(() =>
+      Promise.resolve(jsonResponse(PERSISTED)),
+    ) as unknown as typeof fetch;
+    const api = createRatingsApi('', fetchImpl);
+    const out = await api.putRating('alpha', 'sess-a1', { verdicts: VERDICTS });
+    expect(out.verdicts).toEqual(VERDICTS);
+    expect(out.rubricAtRating).toEqual(RUBRIC);
+  });
+
+  it('throws RatingsApiError carrying the status on a non-2xx response', async () => {
+    const fetchImpl = vi.fn(() =>
+      Promise.resolve(new Response('too large', { status: 413 })),
+    ) as unknown as typeof fetch;
+    const api = createRatingsApi('', fetchImpl);
+    try {
+      await api.putRating('alpha', 'sess-a1', { verdicts: VERDICTS });
+      expect.unreachable('should have thrown');
+    } catch (err) {
+      expect(err).toBeInstanceOf(RatingsApiError);
+      expect((err as RatingsApiError).status).toBe(413);
+    }
   });
 });

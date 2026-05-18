@@ -3,6 +3,7 @@ import { NButton, NDataTable, NSelect, NSkeleton } from 'naive-ui';
 import { computed, h, ref, type VNode } from 'vue';
 import { useRouter } from 'vue-router';
 
+import CalibrationSummaryPanel from '../components/CalibrationSummaryPanel.vue';
 import EmptyState from '../components/EmptyState.vue';
 import { useSessions } from '../composables/useSessions.js';
 import { durationBetween, sessionIdSuffix } from '../lib/session-format.js';
@@ -138,6 +139,8 @@ function rowProps(row: Row): Record<string, unknown> {
         />
       </div>
     </header>
+
+    <CalibrationSummaryPanel />
 
     <div v-if="loading" data-testid="sessions-loading" class="skeleton">
       <NSkeleton v-for="n in 4" :key="n" text :repeat="1" height="2.2rem" />

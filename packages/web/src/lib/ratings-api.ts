@@ -1,8 +1,18 @@
-// Typed GET-only read client for the v4-5 session endpoints (design §7).
-// Mirrors `api/client.ts` but for the sessions/calibration surface. The PUT
-// rating writer is added in WU v4-8 — this file stays read-only.
+// Typed read client for the v4-5 session endpoints + the v4-6 write endpoint
+// (design §7). Mirrors `api/client.ts` but for the sessions/calibration
+// surface.
+//
+// WRITE GUARD: this is the ONE file in `packages/web/src` sanctioned to use a
+// write-method literal. The eslint `no-restricted-syntax` rule (design §3.4)
+// bans `'POST'`/`'PUT'`/`'DELETE'`/`'PATCH'` literals everywhere else in the
+// SPA; this module is the rule's single `ignores` entry. Keeping the write
+// path in exactly one typed module is the SPA-side defense-in-depth.
 
-import type { CalibrationSummary, SessionRating } from '@metaswarm-dashboard/types/ratings';
+import type {
+  CalibrationSummary,
+  OperatorVerdict,
+  SessionRating,
+} from '@metaswarm-dashboard/types/ratings';
 import type {
   ProcessRubricScore,
   SessionSummary,
@@ -35,6 +45,12 @@ interface CalibrationEnvelope {
   summary: CalibrationSummary;
 }
 
+/** The PUT-rating request body — the server derives everything else (§7). */
+export interface PutRatingBody {
+  verdicts: OperatorVerdict[];
+  overallNote?: string;
+}
+
 async function getJson<T>(path: string, fetchImpl: typeof fetch): Promise<T> {
   const res = await fetchImpl(path, {
     method: 'GET',
@@ -53,6 +69,17 @@ export interface RatingsApi {
   getSession(project: string, sessionId: string): Promise<SessionDetail>;
   /** `GET /api/calibration` → the derived `CalibrationSummary`. */
   getCalibration(): Promise<CalibrationSummary>;
+  /**
+   * `PUT /api/sessions/:project/:sessionId/rating` → the persisted
+   * `SessionRating`. The body carries only `{ verdicts, overallNote? }`; the
+   * server re-derives `rubricAtRating`, `ratedAt`, `sessionId`, `projectName`.
+   * A re-rate upserts. Non-2xx → `RatingsApiError`.
+   */
+  putRating(
+    project: string,
+    sessionId: string,
+    body: PutRatingBody,
+  ): Promise<SessionRating>;
 }
 
 export function createRatingsApi(
@@ -80,6 +107,23 @@ export function createRatingsApi(
         fetchImpl,
       );
       return envelope.summary;
+    },
+    putRating: async (project, sessionId, body) => {
+      const path = `${baseUrl}/api/sessions/${encodeURIComponent(project)}/${encodeURIComponent(sessionId)}/rating`;
+      // The browser adds `Sec-Fetch-Site: same-origin` itself for a
+      // same-origin SPA fetch — the server's §8.1 CSRF contract is satisfied.
+      const res = await fetchImpl(path, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        throw new RatingsApiError(`PUT ${path} → ${res.status}`, res.status);
+      }
+      return (await res.json()) as SessionRating;
     },
   };
 }
