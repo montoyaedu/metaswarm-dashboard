@@ -462,23 +462,26 @@ describe('discoverSessions', () => {
 });
 
 describe('@metaswarm-dashboard/sessions public surface', () => {
-  it('exports exactly the v5-1 public value set', () => {
+  it('exports exactly the v5-2 public value set', () => {
     // After WU v4-4 the barrel re-exports the v3-built modules plus the
     // discovery module; WU v4-5 added the rating-store read helpers
     // (`ratingPath`, `readSessionRating`); WU v4-6 added the write helper
-    // `writeSessionRating`; WU v5-1 adds the cost-foundation surface
+    // `writeSessionRating`; WU v5-1 added the cost-foundation surface
     // (`costFor`, `CANONICAL_MODEL_ALIASES`, `loadPricingTable`,
-    // `pricingTableHash`, `resolveProjectForCwd`).
+    // `pricingTableHash`, `resolveProjectForCwd`); WU v5-2 adds the Claude
+    // usage carrier `parseTranscriptUsage` and `computeSessionCost`.
     // (`assertRatingPathWithinRoot` is a `rating-store` internal —
     // unit-tested directly, NOT re-exported from the barrel.)
     const valueExports = Object.keys(sessions).sort();
     expect(valueExports).toEqual([
       'CANONICAL_MODEL_ALIASES',
+      'computeSessionCost',
       'costFor',
       'discoverSessions',
       'encodeTranscriptDirName',
       'loadPricingTable',
       'parseTranscript',
+      'parseTranscriptUsage',
       'pricingTableHash',
       'ratingPath',
       'readSessionRating',
@@ -500,5 +503,7 @@ describe('@metaswarm-dashboard/sessions public surface', () => {
     expect(typeof sessions.loadPricingTable).toBe('function');
     expect(typeof sessions.pricingTableHash).toBe('function');
     expect(typeof sessions.resolveProjectForCwd).toBe('function');
+    expect(typeof sessions.parseTranscriptUsage).toBe('function');
+    expect(typeof sessions.computeSessionCost).toBe('function');
   });
 });

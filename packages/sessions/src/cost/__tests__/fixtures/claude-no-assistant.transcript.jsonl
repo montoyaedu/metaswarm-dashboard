@@ -1,0 +1,2 @@
+{"type":"summary","summary":"[redacted for fixture]","leafUuid":"[redacted-uuid]"}
+{"type":"user","timestamp":"2026-05-18T11:00:00.000Z","sessionId":"00000000-0000-4000-8000-000000000002","uuid":"[redacted-uuid]","cwd":"/fixture/project","isSidechain":false,"message":{"role":"user","content":"[redacted for fixture]"}}
