@@ -1,47 +1,31 @@
-# Active Plan — Sessions Observability v5
-
-<!-- approved: 2026-05-18 -->
-<!-- gate-iterations: design-review 2 rounds (5/5 APPROVED), plan-review 2 rounds (3/3 PASS) -->
-<!-- user-approved: true — operator approved + chose orchestrated execution 2026-05-18 -->
+# Active Plan — Sessions Observability v4
+<!-- approved: 2026-05-17 -->
+<!-- gate-iterations: design-review 3 rounds (5/5 APPROVED), plan-review 3 rounds (3/3 PASS) -->
+<!-- user-approved: true -->
 <!-- execution-method: metaswarm orchestrated execution (4-phase loop per WU) -->
-<!-- status: approved — execution blocked on the PR #6 (sessions-spike v4) merge -->
+<!-- status: complete -->
 
-Canonical plan: `docs/plan-sessions-v5.md`. Design:
-`docs/design-sessions-spike-v5.md` (design-review gate APPROVED 5/5).
-Branch: `sessions-v5` (off `sessions-spike`; rebases onto `main` once PR #6
-merges). Epic: `metaswarm-dashboard-r9e`.
+Canonical plan: `docs/plan-sessions-v4.md`. Design: `docs/design-sessions-spike-v4.md`.
+Branch: `sessions-spike`. (Supersedes the stale Step-1 MVP plan previously in this file —
+the MVP shipped; its record is in git history.)
 
-Two features: F1 rating-survey context (ai-title + prompts + action
-summary); F2 AI cost per vendor in every view (Claude from transcripts,
-Codex from `~/.codex/sessions`, Gemini from the metaswarm ledger).
-
-## Work units (10) — each via the orchestrated 4-phase loop
+## Work units (9) — each via the orchestrated 4-phase loop (IMPLEMENT → VALIDATE → ADVERSARIAL REVIEW → COMMIT)
 
 | WU | Title | Deps |
 |----|-------|------|
-| v5-1 | cost foundation: types + pricing + calculator + cwd resolver | — |
-| v5-2 | Claude usage/model parse + `computeSessionCost` | v5-1 |
-| v5-3 | Codex rollout reader + hardened recursive walk | v5-1 |
-| v5-4 | Gemini ledger reader + empty-state | v5-1 |
-| v5-5 | per-project per-vendor aggregation + cache | v5-2,3,4 |
-| v5-6 | `ai-title` parse + session schema extensions | v5-2 |
-| v5-7 | server API + namespace join **[HUMAN CHECKPOINT]** | v5-5,6 |
-| v5-8 | F1 SPA survey-context panel | v5-6,7 |
-| v5-9 | F2 SPA cost widgets — Sessions list + detail | v5-7,8 |
-| v5-10 | F2 SPA cost widgets — repo views + e2e + docs | v5-1..9 |
+| v4-1 | rating schemas in `@metaswarm-dashboard/types` | — |
+| v4-2 | shared lifts: config loader + `transcriptsDir` → `types` | — |
+| v4-3 | rubric → advisory + error-handling & thrashing fixes | — |
+| v4-4 | `transcript-discovery.ts` + `packages/sessions` public surface | v4-2 |
+| v4-5 | server read API — 3 GET endpoints + mtime cache | v4-1, v4-3, v4-4 |
+| v4-6 | server write API — `PUT rating` + method-guard re-scope **[HUMAN CHECKPOINT]** | v4-1, v4-5 |
+| v4-7 | SPA nav bar + Sessions list + detail/timeline | v4-5 |
+| v4-8 | SPA rating survey + calibration summary | v4-6, v4-7 |
+| v4-9 | integration test + docs + follow-up beads | v4-1..v4-8 |
 
 ## Execution order
-v5-1 → v5-2 → v5-3 → v5-4 → v5-5 → v5-6 → v5-7 (**human checkpoint**) →
-v5-8 → v5-9 → v5-10.
+v4-1 → v4-2 → v4-3 → v4-4 → v4-5 → v4-6 (**human checkpoint after commit**) → v4-7 → v4-8 → v4-9.
+(v4-1/2/3 are independent and could parallelize; executed sequentially here.)
 
 ## State
-- Gates: design-review 5/5 (2 rounds), plan-review 3/3 (2 rounds).
-- Execution method: metaswarm orchestrated (operator-chosen 2026-05-18).
-- Execution NOT started — blocked solely on the PR #6 merge (design §2).
-  Kickoff after merge: rebase `sessions-v5` onto `main`, create the per-WU
-  beads, run v5-1 through the 4-phase loop.
-- Live state during execution: `.beads/context/execution-state.md`.
-
-## Recovery
-`bd prime`; read this file + `docs/plan-sessions-v5.md` +
-`docs/design-sessions-spike-v5.md`; `git log main..sessions-v5`.
+Live state: `.beads/context/execution-state.md`. Per-WU DoD / file scope / test specs: `docs/plan-sessions-v4.md`.
