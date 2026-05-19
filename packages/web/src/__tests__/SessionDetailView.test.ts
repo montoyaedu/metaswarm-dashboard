@@ -2,6 +2,7 @@
 // + the no-v-html safety guard), the in-progress badge, and the loading /
 // error / 404 states.
 
+import type { SessionCost } from '@metaswarm-dashboard/types/cost';
 import type {
   ProcessRubricScore,
   SessionTimeline,
@@ -78,6 +79,42 @@ function makeTimeline(over: Partial<SessionTimeline> = {}): SessionTimeline {
   };
 }
 
+/** A two-model `SessionCost` — one priced, one unpriced (v5-9 panel). */
+function makeCost(over: Partial<SessionCost> = {}): SessionCost {
+  return {
+    sessionId: 'sess-a1',
+    vendor: 'anthropic',
+    byModel: [
+      {
+        vendor: 'anthropic',
+        model: 'claude-opus-4-7',
+        usage: {
+          inputTokens: 1200,
+          outputTokens: 800,
+          cacheReadTokens: 5000,
+          cacheCreation5mTokens: 300,
+          cacheCreation1hTokens: 0,
+          reasoningTokens: 0,
+        },
+        costUsd: 0.0456,
+        priced: true,
+      },
+    ],
+    totalCostUsd: 0.0456,
+    hasUnpriced: false,
+    ...over,
+  };
+}
+
+/** The detail response shape the v5-7 server actually sends. */
+interface DetailResponse {
+  timeline: SessionTimeline;
+  rubric: ProcessRubricScore;
+  rating: null;
+  cost?: SessionCost;
+  pricingAsOf?: string;
+}
+
 function makeRouter(): Router {
   return createRouter({
     history: createMemoryHistory(),
@@ -94,7 +131,7 @@ function makeRouter(): Router {
 
 /** Stub fetch for the detail endpoint. */
 function withFetch(
-  responder: () => { timeline: SessionTimeline; rubric: ProcessRubricScore; rating: null } | Response,
+  responder: () => DetailResponse | Response,
 ): () => void {
   const fetchMock = vi.fn(() => {
     const out = responder();
@@ -357,5 +394,167 @@ describe('SessionDetailView', () => {
     await flushPromises();
     expect(router.currentRoute.value.name).toBe('sessions');
     restore();
+  });
+
+  describe('cost panel (v5-9)', () => {
+    it('renders a per-model cost panel with token counts and USD', async () => {
+      const restore = withFetch(() => ({
+        timeline: makeTimeline(),
+        rubric: RUBRIC,
+        rating: null,
+        cost: makeCost(),
+        pricingAsOf: '2026-05-10',
+      }));
+      const w = await mountDetail(makeRouter());
+      const panel = w.find('[data-testid="session-cost-panel"]');
+      expect(panel.exists()).toBe(true);
+
+      const row = w.find('[data-testid="cost-model-claude-opus-4-7"]');
+      expect(row.exists()).toBe(true);
+      // The per-model row carries the input / output / cache token counts.
+      expect(row.text()).toContain('1,200');
+      expect(row.text()).toContain('800');
+      // cache = cacheRead + 5m + 1h creation = 5000 + 300 + 0
+      expect(row.text()).toContain('5,300');
+      // The per-model USD at 4-decimal precision.
+      expect(row.text()).toContain('$0.0456');
+      restore();
+    });
+
+    it('shows the session total cost', async () => {
+      const restore = withFetch(() => ({
+        timeline: makeTimeline(),
+        rubric: RUBRIC,
+        rating: null,
+        cost: makeCost(),
+        pricingAsOf: '2026-05-10',
+      }));
+      const w = await mountDetail(makeRouter());
+      const total = w.find('[data-testid="cost-total"]');
+      expect(total.exists()).toBe(true);
+      expect(total.text()).toContain('$0.0456');
+      restore();
+    });
+
+    it('renders an unpriced model as "n/a" with an explaining tooltip', async () => {
+      const restore = withFetch(() => ({
+        timeline: makeTimeline(),
+        rubric: RUBRIC,
+        rating: null,
+        cost: makeCost({
+          byModel: [
+            {
+              vendor: 'anthropic',
+              model: 'claude-future-9',
+              usage: {
+                inputTokens: 10,
+                outputTokens: 5,
+                cacheReadTokens: 0,
+                cacheCreation5mTokens: 0,
+                cacheCreation1hTokens: 0,
+                reasoningTokens: 0,
+              },
+              costUsd: null,
+              priced: false,
+            },
+          ],
+          totalCostUsd: 0,
+          hasUnpriced: true,
+        }),
+        pricingAsOf: '2026-05-10',
+      }));
+      const w = await mountDetail(makeRouter());
+      const row = w.find('[data-testid="cost-model-claude-future-9"]');
+      expect(row.text()).toContain('n/a');
+      // The tooltip text names the model and explains why cost is absent.
+      const tip = w.find('[data-testid="cost-unpriced-tip-claude-future-9"]');
+      expect(tip.exists()).toBe(true);
+      expect(tip.attributes('title')).toContain('claude-future-9');
+      expect(tip.attributes('title')).toContain('not in the pricing table');
+
+      // Hovering the trigger renders the NTooltip popover body — its text
+      // carries the same explaining caveat.
+      await tip.trigger('mouseenter');
+      await flushPromises();
+      const body = document.body.textContent ?? '';
+      expect(body).toContain('claude-future-9');
+      expect(body).toContain('not in the pricing table');
+      restore();
+    });
+
+    it('renders the pricingAsOf caveat exactly once as a footnote', async () => {
+      const restore = withFetch(() => ({
+        timeline: makeTimeline(),
+        rubric: RUBRIC,
+        rating: null,
+        cost: makeCost(),
+        pricingAsOf: '2026-05-10',
+      }));
+      const w = await mountDetail(makeRouter());
+      const caveats = w.findAll('[data-testid="cost-pricing-asof"]');
+      expect(caveats).toHaveLength(1);
+      expect(w.find('[data-testid="cost-pricing-asof"]').text()).toContain('2026-05-10');
+      restore();
+    });
+
+    it('omits the cost panel when the response carries no cost (v4 detail)', async () => {
+      const restore = withFetch(() => ({
+        timeline: makeTimeline(),
+        rubric: RUBRIC,
+        rating: null,
+      }));
+      const w = await mountDetail(makeRouter());
+      expect(w.find('[data-testid="session-cost-panel"]').exists()).toBe(false);
+      restore();
+    });
+
+    it('renders an empty-state line when the cost has no per-model rows', async () => {
+      const restore = withFetch(() => ({
+        timeline: makeTimeline(),
+        rubric: RUBRIC,
+        rating: null,
+        cost: makeCost({ byModel: [], totalCostUsd: 0, hasUnpriced: false }),
+        pricingAsOf: '2026-05-10',
+      }));
+      const w = await mountDetail(makeRouter());
+      const panel = w.find('[data-testid="session-cost-panel"]');
+      expect(panel.exists()).toBe(true);
+      expect(panel.text()).toContain('No costable model usage');
+      restore();
+    });
+
+    it('renders model ids as text — never via v-html (XSS-safe)', async () => {
+      const restore = withFetch(() => ({
+        timeline: makeTimeline(),
+        rubric: RUBRIC,
+        rating: null,
+        cost: makeCost({
+          byModel: [
+            {
+              vendor: 'anthropic',
+              model: '<img src=x onerror=alert(1)>',
+              usage: {
+                inputTokens: 1,
+                outputTokens: 1,
+                cacheReadTokens: 0,
+                cacheCreation5mTokens: 0,
+                cacheCreation1hTokens: 0,
+                reasoningTokens: 0,
+              },
+              costUsd: null,
+              priced: false,
+            },
+          ],
+          totalCostUsd: 0,
+          hasUnpriced: true,
+        }),
+        pricingAsOf: '2026-05-10',
+      }));
+      const w = await mountDetail(makeRouter());
+      const panel = w.find('[data-testid="session-cost-panel"]');
+      expect(panel.text()).toContain('<img src=x onerror=alert(1)>');
+      expect(panel.find('img').exists()).toBe(false);
+      restore();
+    });
   });
 });

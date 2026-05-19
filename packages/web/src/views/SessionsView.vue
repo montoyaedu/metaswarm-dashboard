@@ -6,6 +6,7 @@ import { useRouter } from 'vue-router';
 import CalibrationSummaryPanel from '../components/CalibrationSummaryPanel.vue';
 import EmptyState from '../components/EmptyState.vue';
 import { useSessions } from '../composables/useSessions.js';
+import { formatUsd } from '../lib/cost-format.js';
 import { durationBetween, sessionIdSuffix } from '../lib/session-format.js';
 
 const router = useRouter();
@@ -22,6 +23,10 @@ interface Row {
   eventCount: number;
   sidSuffix: string;
   rated: boolean;
+  /** v5-9: the Claude-generated session title, or `null` when absent. */
+  aiTitle: string | null;
+  /** v5-9: the session's pre-formatted USD cost (`"n/a"` / `"$0.00"` / …). */
+  costLabel: string;
 }
 
 const rows = computed<Row[]>(() =>
@@ -33,6 +38,12 @@ const rows = computed<Row[]>(() =>
     eventCount: s.eventCount,
     sidSuffix: sessionIdSuffix(s.sessionId),
     rated: s.rated,
+    // `aiTitle` is `.optional()` on the v5-6 schema — an absent field (a v4
+    // summary) is normalized to `null` so the title line is simply omitted.
+    aiTitle: s.aiTitle ?? null,
+    // v5-9 (design §8.2): `costUsd` is `null` for an uncostable session and
+    // `.optional()` on the v5-6 schema — an absent field renders "n/a".
+    costLabel: formatUsd(s.costUsd ?? null),
   })),
 );
 
@@ -90,14 +101,49 @@ const columns = [
       ),
   },
   {
-    title: 'Session',
-    key: 'sidSuffix',
+    // v5-9 (design §8.2): a "Cost" column added after "Events". The cell
+    // shows the pre-formatted USD figure — `"n/a"` for an uncostable
+    // session, `"$0.00"` for a genuine zero, 4-decimal precision otherwise.
+    title: 'Cost',
+    key: 'costLabel',
     render: (row: Row): VNode =>
       h(
         'span',
-        { class: 'sid', 'data-testid': `session-sid-${rowKey(row)}` },
-        row.sidSuffix,
+        { class: 'cost', 'data-testid': `session-cost-${rowKey(row)}` },
+        row.costLabel,
       ),
+  },
+  {
+    // v5-9 (design §8.2): the Session cell shows `aiTitle` as a title line
+    // ABOVE the `<sid[:8]>` suffix. The suffix is KEPT — it is the only
+    // same-minute disambiguator (v4 §6.2). When `aiTitle` is null the title
+    // line is omitted entirely (no blank line). All content is text —
+    // never `v-html`.
+    title: 'Session',
+    key: 'sidSuffix',
+    render: (row: Row): VNode => {
+      const lines: VNode[] = [];
+      if (row.aiTitle !== null) {
+        lines.push(
+          h(
+            'span',
+            {
+              class: 'session-title',
+              'data-testid': `session-title-${rowKey(row)}`,
+            },
+            row.aiTitle,
+          ),
+        );
+      }
+      lines.push(
+        h(
+          'span',
+          { class: 'sid', 'data-testid': `session-sid-${rowKey(row)}` },
+          row.sidSuffix,
+        ),
+      );
+      return h('span', { class: 'session-cell' }, lines);
+    },
   },
   {
     title: 'Rated',
@@ -211,10 +257,25 @@ h1 {
   align-items: flex-start;
 }
 
+.session-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.session-title {
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+
 .sid {
   font-family: ui-monospace, Menlo, Monaco, monospace;
   font-size: 0.8rem;
   opacity: 0.8;
+}
+
+.cost {
+  font-variant-numeric: tabular-nums;
 }
 
 .rated--yes {
