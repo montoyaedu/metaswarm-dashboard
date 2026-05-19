@@ -95,9 +95,13 @@ message.usage  → {
   split** for cache-write pricing. The `usage.iterations[]` array is **not**
   summed — the top-level figures are already cumulative for the record.
 - Per-session cost = the sum over the session's `assistant` records, **main
-  thread and `isSidechain` subagent records** (all share one `sessionId` /
-  file). Recoverable **retroactively** for every transcript on disk. Vendor
-  is always `anthropic` for a Claude Code session.
+  thread and `isSidechain` subagent records**. The subagent records do **not**
+  share the main transcript's file: real Claude Code writes them to separate
+  `subagents/agent-*.jsonl` files alongside the main `<sessionId>.jsonl` (they
+  do carry the same `sessionId`). v5-7's `session-cost-source.ts` resolves the
+  main transcript **plus** every sibling `subagents/agent-*.jsonl` and prices
+  the concatenated record set. Recoverable **retroactively** for every
+  transcript on disk. Vendor is always `anthropic` for a Claude Code session.
 
 ### §4.2 OpenAI / Codex — `~/.codex/sessions/<YYYY>/<MM>/<DD>/rollout-*.jsonl`
 

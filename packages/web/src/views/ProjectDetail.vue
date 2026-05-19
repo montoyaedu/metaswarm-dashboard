@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { VendorCostRollup, VendorId } from '@metaswarm-dashboard/types/cost';
 import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
@@ -6,6 +7,7 @@ import AgentTable from '../components/AgentTable.vue';
 import EmptyState from '../components/EmptyState.vue';
 import ThroughputSparkline from '../components/ThroughputSparkline.vue';
 import { useProjectDetail } from '../composables/useProjectDetail.js';
+import { formatUsd } from '../lib/cost-format.js';
 
 const route = useRoute();
 const router = useRouter();
@@ -28,6 +30,70 @@ const lastActivityLabel = computed(() => {
 });
 
 const hasData = computed(() => detail.value !== null && detail.value.agents.length > 0);
+
+// v5-10 (design §8.2): the fifth section — "AI cost". The v5-7 server
+// attaches `cost: ProjectCostSummary` + `pricingAsOf` to the detail; a
+// v4-shaped response leaves `cost` `undefined` and the section is omitted.
+const cost = computed(() => detail.value?.cost ?? null);
+const pricingAsOf = computed<string | null>(() => detail.value?.pricingAsOf ?? null);
+
+/** A display row for one vendor in the AI-cost section. */
+interface VendorCostRow {
+  vendor: VendorId;
+  /** Operator-facing vendor name. */
+  label: string;
+  /** `"3 runs"` / `"0 runs"` / `"1 run"`. */
+  runCountLabel: string;
+  /** The vendor's USD figure — see `vendorCostLabel` for the branch logic. */
+  costLabel: string;
+}
+
+/** The three vendors, in a fixed display order (design §8.2 — all shown). */
+const VENDOR_LABELS: ReadonlyArray<readonly [VendorId, string]> = [
+  ['anthropic', 'Anthropic'],
+  ['openai', 'OpenAI'],
+  ['google', 'Google'],
+];
+
+/**
+ * Render a vendor roll-up's USD figure (design §8.2):
+ *
+ * - no runs                      → `"$0.00"` (the roll-up's priced 0);
+ * - all runs unpriced (cost 0,
+ *   `hasUnpriced`)                → `"n/a"` — the figure cannot be computed;
+ * - partly priced (`hasUnpriced`,
+ *   cost > 0)                     → `"$X + unpriced"` — a lower bound;
+ * - fully priced                  → `"$X"`.
+ */
+function vendorCostLabel(rollup: VendorCostRollup): string {
+  if (rollup.hasUnpriced && rollup.costUsd === 0 && rollup.runCount > 0) {
+    return 'n/a';
+  }
+  const base = formatUsd(rollup.costUsd);
+  return rollup.hasUnpriced ? `${base} + unpriced` : base;
+}
+
+const vendorCostRows = computed<VendorCostRow[]>(() => {
+  const c = cost.value;
+  if (c === null) return [];
+  return VENDOR_LABELS.map(([vendor, label]) => {
+    const rollup = c.byVendor[vendor];
+    return {
+      vendor,
+      label,
+      runCountLabel: `${rollup.runCount} ${rollup.runCount === 1 ? 'run' : 'runs'}`,
+      costLabel: vendorCostLabel(rollup),
+    };
+  });
+});
+
+/** The project's total — `"$X + unpriced"` when the total is a lower bound. */
+const projectTotalLabel = computed<string>(() => {
+  const c = cost.value;
+  if (c === null) return '';
+  const base = formatUsd(c.totalCostUsd);
+  return c.hasUnpriced ? `${base} + unpriced` : base;
+});
 
 function goBack(): void {
   void router.push({ name: 'projects-index' });
@@ -75,6 +141,53 @@ function goBack(): void {
           v-else
           message="Recent work units are not exposed in the MVP — see follow-up issue."
         />
+      </section>
+
+      <!-- v5-10 (design §8.2): the fifth section — per-vendor AI cost. All
+           three vendors are listed even with no runs, so the operator sees
+           every vendor was considered. Omitted entirely for a v4-shaped
+           detail that carries no cost. -->
+      <section
+        v-if="cost !== null"
+        class="cost-section"
+        data-testid="project-cost-section"
+      >
+        <h2>AI cost</h2>
+        <table class="cost-table">
+          <thead>
+            <tr>
+              <th>Vendor</th>
+              <th class="num">Runs</th>
+              <th class="num">Cost</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="row in vendorCostRows"
+              :key="row.vendor"
+              :data-testid="`cost-vendor-${row.vendor}`"
+            >
+              <td class="vendor">{{ row.label }}</td>
+              <td class="num">{{ row.runCountLabel }}</td>
+              <td class="num">{{ row.costLabel }}</td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="2" class="total-label">Project total</td>
+              <td class="num total" data-testid="cost-project-total">
+                {{ projectTotalLabel }}
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+        <p
+          v-if="pricingAsOf !== null"
+          class="pricing-asof"
+          data-testid="cost-pricing-asof"
+        >
+          AI prices as of {{ pricingAsOf }}
+        </p>
       </section>
     </template>
   </main>
@@ -144,5 +257,54 @@ section h2 {
   padding: 0.5rem 0.75rem;
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 4px;
+}
+
+/* v5-10: the per-vendor AI-cost table. */
+.cost-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.cost-table th,
+.cost-table td {
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  text-align: left;
+}
+
+.cost-table th {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.6;
+  font-weight: 600;
+}
+
+.cost-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.cost-table .vendor {
+  font-weight: 500;
+}
+
+.cost-table .total-label {
+  font-weight: 600;
+}
+
+.cost-table .total {
+  font-weight: 600;
+}
+
+.cost-table tfoot td {
+  border-bottom: none;
+}
+
+.pricing-asof {
+  margin: 0.6rem 0 0 0;
+  font-size: 0.75rem;
+  opacity: 0.55;
 }
 </style>

@@ -1,13 +1,28 @@
 <script setup lang="ts">
-import type { ProjectSummary } from '@metaswarm-dashboard/types/api';
 import { NBadge, NCard, NPopover, NTag } from 'naive-ui';
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 
+import type { ProjectSummaryWithCost } from '../api/client.js';
 import { buildCollectionAdvice } from '../lib/collection-help.js';
+import { formatUsd } from '../lib/cost-format.js';
 
-const props = defineProps<{ project: ProjectSummary }>();
+const props = defineProps<{ project: ProjectSummaryWithCost }>();
 const router = useRouter();
+
+// v5-10 (design §8.2): the per-card total AI cost. The v5-7 server attaches
+// `totalCostUsd` + `hasUnpriced` to every `/api/projects` row; a v4-shaped
+// row leaves `totalCostUsd` `undefined` and the metric is omitted.
+//
+// `hasUnpriced` means the priced sum is a LOWER BOUND — design §8.2 mandates
+// `"$X + unpriced"` (never a bare number, never "n/a", since a project's
+// total is always a real priced sum — `0` is meaningful, not "no data").
+const aiCostLabel = computed<string | null>(() => {
+  const total = props.project.totalCostUsd;
+  if (total === undefined) return null;
+  const base = formatUsd(total);
+  return props.project.hasUnpriced === true ? `${base} + unpriced` : base;
+});
 
 const lastActivityLabel = computed(() => {
   if (props.project.lastActivityAt === null) return 'Never';
@@ -149,6 +164,14 @@ function stopProp(e: Event): void {
           <span class="label">Last activity</span>
           <span class="value" data-testid="metric-last-activity">{{ lastActivityLabel }}</span>
         </div>
+        <!-- v5-10 (design §8.2): the project's total AI cost. Spans the full
+             row so the "$X + unpriced" lower-bound label is never clipped. -->
+        <div v-if="aiCostLabel !== null" class="metric ai-cost">
+          <span class="label">AI cost</span>
+          <span class="value" :data-testid="`metric-ai-cost-${project.name}`">
+            {{ aiCostLabel }}
+          </span>
+        </div>
       </div>
     </NCard>
     <NBadge v-if="false" /> <!-- kept for tree-shaking import retention check -->
@@ -186,6 +209,11 @@ function stopProp(e: Event): void {
 .metric {
   display: flex;
   flex-direction: column;
+}
+
+/* The AI-cost metric spans both grid columns so "$X + unpriced" fits. */
+.metric.ai-cost {
+  grid-column: 1 / -1;
 }
 
 .label {

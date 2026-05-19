@@ -15,7 +15,7 @@ import type { ProjectDetail } from '@metaswarm-dashboard/types/api';
 import type { ProjectCostSummary } from '@metaswarm-dashboard/types/cost';
 import type { FastifyInstance } from 'fastify';
 
-import { toProjectDetail } from '../data/aggregator.js';
+import { buildThroughput, toProjectDetail } from '../data/aggregator.js';
 import type { CostService } from '../data/cost-service.js';
 import type { SnapshotReader } from '../data/snapshot-reader.js';
 
@@ -40,15 +40,20 @@ export interface ProjectDetailWithCost extends ProjectDetail {
   pricingAsOf: string;
 }
 
-/** A zero-metric `ProjectDetail` for a config-only project (no snapshot). */
-function emptyDetail(name: string): ProjectDetail {
+/**
+ * A zero-metric `ProjectDetail` for a config-only project (no snapshot).
+ *
+ * bead `metaswarm-dashboard-gcx`: `ProjectDetail.throughput` is contractually
+ * "always exactly 14 entries, zero-filled" (`packages/types/src/api.ts`) — a
+ * config-only project must not break that with a bare `[]`. `buildThroughput`
+ * with no snapshots emits the canonical 14 zero-filled `ThroughputPoint`s
+ * anchored at `now`, identical to the snapshot-side `toProjectDetail` output.
+ */
+function emptyDetail(name: string, now: Date): ProjectDetail {
   return {
     name,
     agents: [],
-    // `toProjectDetail` always returns 14 throughput points; a config-only
-    // project has none, so emit 14 zero-filled placeholders to keep the
-    // contract identical for the SPA.
-    throughput: [],
+    throughput: buildThroughput([], now),
     recentWorkUnits: [],
     lastActivityAt: null,
   };
@@ -84,7 +89,7 @@ export function registerProjectsByNameRoute(
             deps.reader.recentDaily(name, RECENT_WINDOW_DAYS),
             now(),
           )
-        : emptyDetail(name);
+        : emptyDetail(name, now());
 
       // The cost side — the project's `ProjectCostSummary`, or a `0`-cost
       // summary for a snapshot-only project (no config entry, no cost).

@@ -1,14 +1,18 @@
 // Group ProjectSummary[] by their parent directory (`dirname(path)`).
 // Pure function so it can be unit-tested directly.
+//
+// Generic over the row type `P` (v5-10): callers pass a `ProjectSummary` OR
+// a `ProjectSummaryWithCost` and the grouped output preserves that exact
+// type — the v5-7 per-card cost fields survive the grouping unchanged.
 
 import type { ProjectSummary } from '@metaswarm-dashboard/types/api';
 
-export interface ProjectGroup {
+export interface ProjectGroup<P extends ProjectSummary = ProjectSummary> {
   /** Parent directory path. The display label is the basename. */
   parentPath: string;
   /** Display name (basename of parentPath, or "(unknown parent)" when empty). */
   label: string;
-  projects: ProjectSummary[];
+  projects: P[];
   /** Aggregate counts useful for the section header. */
   counts: {
     total: number;
@@ -33,8 +37,10 @@ function basename(p: string): string {
   return idx === -1 ? p : p.slice(idx + 1);
 }
 
-export function groupByParent(projects: ProjectSummary[]): ProjectGroup[] {
-  const groups = new Map<string, ProjectSummary[]>();
+export function groupByParent<P extends ProjectSummary>(
+  projects: P[],
+): ProjectGroup<P>[] {
+  const groups = new Map<string, P[]>();
   for (const p of projects) {
     const parent = dirname(p.path);
     const existing = groups.get(parent) ?? [];
@@ -43,7 +49,7 @@ export function groupByParent(projects: ProjectSummary[]): ProjectGroup[] {
   }
 
   return Array.from(groups.entries())
-    .map(([parentPath, list]): ProjectGroup => {
+    .map(([parentPath, list]): ProjectGroup<P> => {
       const sorted = [...list].sort((a, b) => a.name.localeCompare(b.name));
       const counts = {
         total: sorted.length,

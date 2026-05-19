@@ -480,6 +480,31 @@ describe('GET /api/projects/:name — cost detail', () => {
     await app.close();
   });
 
+  // bead `metaswarm-dashboard-gcx`: a config-only project's detail (no
+  // snapshot) must still honour the `ProjectDetail.throughput` contract
+  // ("always exactly 14 entries, zero-filled" — packages/types/src/api.ts).
+  // The v5-7 `emptyDetail` originally returned `throughput: []`, breaking
+  // that contract for the §7 config-only branch.
+  it('a config-only project detail has exactly 14 zero-filled throughput entries (gcx)', async () => {
+    const alpha = writeUsageTranscript('alpha', 'sess-a1', { assistantCount: 1 });
+    const app = await makeApp(configOf(['alpha', alpha]));
+    const res = await app.inject({ method: 'GET', url: '/api/projects/alpha' });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    // Exactly 14 entries — the contract the SPA throughput sparkline relies on.
+    expect(body.throughput).toHaveLength(14);
+    // A config-only project has no snapshot history → every day is zero-filled.
+    for (const point of body.throughput) {
+      expect(point).toMatchObject({ closed: 0 });
+      expect(point.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    }
+    // The window is anchored at the injected `now` (2026-05-18) — the last
+    // entry is today, the first is 13 days earlier.
+    expect(body.throughput[13].date).toBe('2026-05-18');
+    expect(body.throughput[0].date).toBe('2026-05-05');
+    await app.close();
+  });
+
   it('serves a snapshot-only project (no config) with a 0-cost ProjectCostSummary', async () => {
     writeSnapshot('ghost');
     const alpha = writeUsageTranscript('alpha', 'sess-a1', { assistantCount: 1 });

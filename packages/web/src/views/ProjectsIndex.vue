@@ -9,6 +9,18 @@ import { groupByParent } from '../lib/group-by-parent.js';
 const { projects, loading, error } = useProjects();
 
 const groups = computed(() => groupByParent(projects.value));
+
+// v5-10 (design §8.2): the `pricingAsOf` caveat is rendered ONCE per view —
+// a single footnote under the card grid, not repeated on every card. The
+// v5-7 server stamps the same `pricingAsOf` on every row; a v4-shaped
+// payload omits it entirely, in which case the footnote is suppressed.
+const pricingAsOf = computed<string | null>(() => {
+  for (const p of projects.value) {
+    if (p.pricingAsOf !== undefined) return p.pricingAsOf;
+  }
+  return null;
+});
+
 const allEmpty = computed(
   () =>
     !loading.value &&
@@ -66,6 +78,15 @@ function statusSummary(g: ReturnType<typeof groupByParent>[number]): string {
           <ProjectCard v-for="p in g.projects" :key="p.name" :project="p" />
         </div>
       </section>
+
+      <!-- v5-10 (design §8.2): one pricing-staleness footnote for the view. -->
+      <p
+        v-if="pricingAsOf !== null"
+        class="pricing-asof"
+        data-testid="projects-pricing-asof"
+      >
+        AI prices as of {{ pricingAsOf }}
+      </p>
     </div>
   </main>
 </template>
@@ -120,5 +141,11 @@ header h1 {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 1rem;
+}
+
+.pricing-asof {
+  margin: 0;
+  font-size: 0.75rem;
+  opacity: 0.55;
 }
 </style>
