@@ -7,19 +7,37 @@
 //
 // SECURITY: rubric `evidence` is transcript-derived and MAY carry operator
 // secrets — it is rendered via TEXT interpolation, never `v-html`. See §6.3.
+// v5-8: the F1 context panel below surfaces the `aiTitle` + full user-prompt
+// text, which MAY also carry operator secrets — likewise text-interpolated,
+// never `v-html` (design §8.1 / §9). Long strings reuse `truncateSummary`.
 //
 // SAVE: the button is disabled until ≥1 verdict is selected; an unselected
 // row is omitted from `verdicts[]` (partial ratings are valid). On failure the
 // operator's entered verdicts are RETAINED in component state (never
 // discarded) — Retry re-submits. On success each rated row shows agree/
 // disagree vs the PERSISTED `rubricAtRating`.
+//
+// v5-8 — F1 SURVEY-CONTEXT PANEL (design §8.1): a bordered panel ABOVE the 9
+// KPI rows showing the `aiTitle` heading, the first user prompt (with an
+// inline "show all N prompts" expander), and the tool-use action summary.
+// The expander's revealed prompts render INSIDE the panel — a sibling that
+// precedes the KPI <ol> — so toggling it never pushes the KPI rows down.
 
 import type { OperatorVerdict, SessionRating } from '@metaswarm-dashboard/types/ratings';
-import type { ProcessRubricScore } from '@metaswarm-dashboard/types/sessions';
+import type {
+  ProcessRubricScore,
+  SessionTimeline,
+} from '@metaswarm-dashboard/types/sessions';
 import { NButton, NInput, NRadio, NRadioGroup } from 'naive-ui';
 import { computed, reactive, ref } from 'vue';
 
 import { createRatingsApi, type RatingsApi } from '../lib/ratings-api.js';
+import {
+  actionSummary,
+  sessionHeading,
+  userPrompts,
+} from '../lib/session-context.js';
+import { truncateSummary } from '../lib/session-format.js';
 
 /** The five operator verdicts (a superset of the rubric's four). */
 type Verdict = OperatorVerdict['verdict'];
@@ -30,6 +48,8 @@ const props = defineProps<{
   sessionId: string;
   rubric: ProcessRubricScore;
   rating: SessionRating | null;
+  /** The session timeline — feeds the F1 context panel (design §8.1). */
+  timeline: SessionTimeline;
   /** Injectable for tests; defaults to the real fetch-backed client. */
   api?: RatingsApi;
 }>();
@@ -68,6 +88,32 @@ const rows = reactive<RowState[]>(
 const displayRows = computed(() =>
   props.rubric.items.map((item, i) => ({ index: i, item, state: rows[i] as RowState })),
 );
+
+// ── F1 context panel (design §8.1) ───────────────────────────────────────
+/** Long context strings are capped at this many chars (reuses §8 helper). */
+const CONTEXT_MAX_CHARS = 600;
+
+/** The panel heading — `aiTitle` or the "Untitled session" fallback. */
+const contextHeading = computed(() => sessionHeading(props.timeline.aiTitle));
+
+/** Every user prompt (slash-commands excluded), truncated for display. */
+const contextPrompts = computed(() =>
+  userPrompts(props.timeline.events).map((p) =>
+    truncateSummary(p, CONTEXT_MAX_CHARS),
+  ),
+);
+
+/** The remaining prompts after the first — revealed by the inline expander. */
+const laterPrompts = computed(() => contextPrompts.value.slice(1));
+
+/** The one-line tool-use action summary (or "no tool calls recorded"). */
+const contextActions = computed(() => actionSummary(props.timeline.events));
+
+/** Inline-expand state for the "show all N prompts" control. */
+const promptsExpanded = ref(false);
+function togglePrompts(): void {
+  promptsExpanded.value = !promptsExpanded.value;
+}
 
 const overallNote = ref(props.rating?.overallNote ?? '');
 
@@ -150,6 +196,55 @@ function agreement(key: RowState['key']): 'agree' | 'disagree' | null {
         show all suggestions
       </NButton>
     </header>
+
+    <!-- F1 survey-context panel (design §8.1) — a bordered panel ABOVE the
+         KPI rows. Its inline expander reveals prompts WITHIN this panel, so
+         the KPI <ol> below is never pushed down. All content is text. -->
+    <section class="context-panel" data-testid="survey-context-panel">
+      <h3 class="context-heading" data-testid="survey-context-heading">
+        {{ contextHeading }}
+      </h3>
+
+      <div
+        v-if="contextPrompts.length > 0"
+        class="context-prompts"
+        data-testid="survey-context-prompts"
+      >
+        <span class="context-label">Prompt</span>
+        <p class="context-prompt">{{ contextPrompts[0] }}</p>
+
+        <template v-if="laterPrompts.length > 0">
+          <NButton
+            data-testid="survey-context-prompts-toggle"
+            size="tiny"
+            text
+            @click="togglePrompts"
+          >
+            {{ promptsExpanded ? 'hide' : 'show all' }}
+            {{ contextPrompts.length }} prompts
+          </NButton>
+
+          <ol
+            v-if="promptsExpanded"
+            class="context-more"
+            data-testid="survey-context-prompts-more"
+          >
+            <li
+              v-for="(prompt, i) in laterPrompts"
+              :key="i"
+              class="context-prompt"
+            >
+              {{ prompt }}
+            </li>
+          </ol>
+        </template>
+      </div>
+
+      <div class="context-actions" data-testid="survey-context-actions">
+        <span class="context-label">Actions</span>
+        <span class="context-action-summary">{{ contextActions }}</span>
+      </div>
+    </section>
 
     <ol class="survey-rows">
       <li
@@ -283,6 +378,61 @@ function agreement(key: RowState['key']): 'agree' | 'disagree' | null {
 .survey-header h2 {
   margin: 0;
   font-size: 1.05rem;
+}
+
+/* F1 context panel (design §8.1) — a self-contained bordered block; its
+   inline expander grows the panel, never the KPI rows below it. */
+.context-panel {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 0.6rem 0.8rem;
+  margin-bottom: 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.context-heading {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.context-prompts,
+.context-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.84rem;
+}
+
+.context-label {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.7rem;
+  opacity: 0.55;
+}
+
+.context-prompt {
+  margin: 0;
+  opacity: 0.9;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.context-more {
+  list-style: none;
+  margin: 0.25rem 0 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.context-action-summary {
+  opacity: 0.9;
+  font-family: ui-monospace, Menlo, Monaco, monospace;
 }
 
 .survey-rows {

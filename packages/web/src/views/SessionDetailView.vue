@@ -101,6 +101,7 @@ function onRatingSaved(rating: SessionRating): void {
         :session-id="sessionId"
         :rubric="detail.rubric"
         :rating="detail.rating"
+        :timeline="detail.timeline"
         @saved="onRatingSaved"
       />
     </template>
