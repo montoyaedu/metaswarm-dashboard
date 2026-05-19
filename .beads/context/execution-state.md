@@ -1,9 +1,9 @@
 # Execution State — sessions-spike v5
 
 ## Current Position
-- Phase: **v5 COMPLETE** — all 10 WUs committed + adversarially reviewed;
-  §8 Final Comprehensive Review **PASS — READY FOR PR**.
-  Next: /self-reflect (knowledge capture) → push → open the v5 PR.
+- Phase: **v5 SHIPPED** — all 10 WUs done; §8 Final Review PASS;
+  /self-reflect done (7 learnings); **PR #7 open, CI green (3/3)**.
+  Awaiting operator review/merge. `sessions-v5` pushed.
 - Branch: `sessions-v5` (rebased onto `main` after the PR #6 squash-merge;
   = main + 4 v5 doc commits). NOT pushed since rebase — operator pushes /
   force-push handled at the human checkpoint.
