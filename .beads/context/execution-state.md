@@ -16,8 +16,8 @@
 | v5-3 Codex reader | e89 | ✅ COMMITTED |
 | v5-4 Gemini ledger reader | r2x | ✅ COMMITTED |
 | v5-5 aggregation | byq | ✅ COMMITTED |
-| v5-6 ai-title + schema | bvk | ⏸ NEXT — IMPLEMENT not started (usage limit) |
-| v5-7 server API | 4s0 | blocked ← v5-5,6 — **HUMAN CHECKPOINT** |
+| v5-6 ai-title + schema | bvk | ✅ COMMITTED |
+| v5-7 server API | 4s0 | ▶ IN PROGRESS — **HUMAN CHECKPOINT** after commit |
 | v5-8 F1 survey panel | 7b3 | blocked ← v5-6,7 |
 | v5-9 F2 cost widgets list/detail | oiw | blocked ← v5-7,8 |
 | v5-10 F2 repo views + e2e + docs | 79d | blocked ← v5-9 |
