@@ -1,7 +1,8 @@
 # Execution State — sessions-spike v5
 
 ## Current Position
-- Phase: **executing v5** (metaswarm orchestrated, 4-phase loop per WU).
+- Phase: **v5 COMPLETE** — all 10 WUs committed + adversarially reviewed.
+  Next: §8 Final Comprehensive Review → /self-reflect → PR.
 - Branch: `sessions-v5` (rebased onto `main` after the PR #6 squash-merge;
   = main + 4 v5 doc commits). NOT pushed since rebase — operator pushes /
   force-push handled at the human checkpoint.
@@ -20,7 +21,7 @@
 | v5-7 server API | 4s0 | ✅ COMMITTED — human checkpoint passed (operator: push + continue) |
 | v5-8 F1 survey panel | 7b3 | ✅ COMMITTED |
 | v5-9 F2 cost widgets list/detail | oiw | ✅ COMMITTED |
-| v5-10 F2 repo views + e2e + docs | 79d | ▶ IN PROGRESS (final WU) |
+| v5-10 F2 repo views + e2e + docs | 79d | ✅ COMMITTED |
 
 Epic: `metaswarm-dashboard-r9e`.
 
