@@ -19,8 +19,8 @@
 | v5-6 ai-title + schema | bvk | ✅ COMMITTED |
 | v5-7 server API | 4s0 | ✅ COMMITTED — human checkpoint passed (operator: push + continue) |
 | v5-8 F1 survey panel | 7b3 | ✅ COMMITTED |
-| v5-9 F2 cost widgets list/detail | oiw | ▶ IN PROGRESS |
-| v5-10 F2 repo views + e2e + docs | 79d | blocked ← v5-9 |
+| v5-9 F2 cost widgets list/detail | oiw | ✅ COMMITTED |
+| v5-10 F2 repo views + e2e + docs | 79d | ▶ IN PROGRESS (final WU) |
 
 Epic: `metaswarm-dashboard-r9e`.
 
