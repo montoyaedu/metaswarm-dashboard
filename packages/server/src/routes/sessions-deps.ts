@@ -9,6 +9,7 @@ import type { Config } from '@metaswarm-dashboard/types/config';
 import type { CalibrationSummary } from '@metaswarm-dashboard/types/ratings';
 import type { SessionRating } from '@metaswarm-dashboard/types/ratings';
 
+import type { CostService } from '../data/cost-service.js';
 import type { TranscriptCache } from '../data/transcript-cache.js';
 
 /** Dependencies the `/api/sessions` + `/api/sessions/:p/:s` handlers need. */
@@ -29,6 +30,12 @@ export interface SessionsRouteDeps {
   ) => SessionRating | null;
   /** The mtime/size-keyed parse + score cache. */
   cache: TranscriptCache;
+  /**
+   * sessions-spike v5-7 (design §7): the cost service. The session routes use
+   * it to attach `aiTitle` / `costUsd` / `hasUnpriced` to each `SessionSummary`
+   * and `cost: SessionCost` to the detail response.
+   */
+  cost: CostService;
 }
 
 /** Dependencies the `/api/calibration` handler needs. */

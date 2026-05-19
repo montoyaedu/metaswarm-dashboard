@@ -12,15 +12,19 @@ import {
 } from '@metaswarm-dashboard/sessions';
 import { loadConfig, type Config } from '@metaswarm-dashboard/types/config';
 import {
+  codexSessionsDir as resolveCodexSessionsDir,
   configFile,
   dataDir as resolveDataDir,
   defaultEnv,
+  externalToolsLedger as resolveExternalToolsLedger,
   transcriptsDir as resolveTranscriptsDir,
   type PathsEnv,
 } from '@metaswarm-dashboard/types/paths';
 import Fastify, { type FastifyInstance } from 'fastify';
 
 import { aggregateCalibration } from './data/calibration.js';
+import { createCostCache } from './data/cost-cache.js';
+import { createCostService } from './data/cost-service.js';
 import { warnIfDataDirInGit } from './data/git-footgun.js';
 import { SnapshotReader } from './data/snapshot-reader.js';
 import { createTranscriptCache } from './data/transcript-cache.js';
@@ -48,6 +52,20 @@ export interface SessionsServerOptions {
   dataDir: string;
 }
 
+/**
+ * Pre-resolved inputs for the v5-7 cost API (design §7). When omitted,
+ * `buildServer` resolves them from `process.env` via the path helpers — the
+ * Codex sessions tree and the metaswarm external-tools ledger. Tests inject
+ * this block so the live `~/.codex/` / `~/.claude/sessions/` reads are
+ * pointed at a temp tree.
+ */
+export interface CostServerOptions {
+  /** The Codex sessions root (`~/.codex/sessions` or its override). */
+  codexSessionsDir: string;
+  /** The metaswarm external-tools ledger file path. */
+  externalToolsLedger: string;
+}
+
 export interface BuildServerOptions {
   /** Where snapshots live. `<dataDir>/projects/<name>/daily/<key>.json`. */
   dataDir: string;
@@ -62,6 +80,11 @@ export interface BuildServerOptions {
    * the config / transcripts dir / datalake from `process.env`.
    */
   sessions?: SessionsServerOptions;
+  /**
+   * Pre-resolved v5-7 cost-API inputs. When omitted, `buildServer` resolves
+   * the Codex sessions dir + the external-tools ledger from `process.env`.
+   */
+  cost?: CostServerOptions;
 }
 
 /**
@@ -94,20 +117,32 @@ export function resolveSessionsOptions(
   };
 }
 
+/**
+ * Resolve the v5-7 cost inputs from a `PathsEnv`: the Codex sessions dir and
+ * the metaswarm external-tools ledger. Exported for unit tests — the `env`
+ * parameter is injectable so the resolution is coverable without depending
+ * on the test machine's real `~/.codex/` / `~/.claude/sessions/`.
+ */
+export function resolveCostOptions(
+  env: PathsEnv = defaultEnv(),
+): CostServerOptions {
+  return {
+    codexSessionsDir: resolveCodexSessionsDir(env),
+    externalToolsLedger: resolveExternalToolsLedger(env),
+  };
+}
+
 export async function buildServer(opts: BuildServerOptions): Promise<FastifyInstance> {
   const app = Fastify({ logger: opts.logger ?? false });
 
   const reader = new SnapshotReader(opts.dataDir);
   const now = opts.now ?? ((): Date => new Date());
   const sessionsOpts = opts.sessions ?? resolveSessionsOptions();
+  const costOpts = opts.cost ?? resolveCostOptions();
 
   // Method guard MUST be installed before route handlers so non-GET
   // requests on /api/* are rejected before any handler logic runs.
   registerMethodGuard(app);
-
-  registerProjectsRoute(app, { reader });
-  registerProjectsByNameRoute(app, { reader, ...(opts.now ? { now: opts.now } : {}) });
-  registerAgentsRoute(app, { reader });
 
   // v4-5 sessions read API. The parse + score cache is per-server (its LRU
   // bound and mtime/size keying live in transcript-cache.ts).
@@ -115,6 +150,26 @@ export async function buildServer(opts: BuildServerOptions): Promise<FastifyInst
     parse: (transcriptPath) => parseTranscript(transcriptPath),
     score: (timeline) => scoreTimeline(timeline),
   });
+
+  // v5-7 cost API (design §7 / §5.4). The two-level cost cache + the cost
+  // service are per-server, mirroring the `createTranscriptCache` wiring.
+  const costCache = createCostCache();
+  const costService = createCostService({
+    config: sessionsOpts.config,
+    cache: costCache,
+    transcriptsDir: sessionsOpts.transcriptsDir,
+    codexSessionsDir: costOpts.codexSessionsDir,
+    externalToolsLedger: costOpts.externalToolsLedger,
+  });
+
+  registerProjectsRoute(app, { reader, cost: costService });
+  registerProjectsByNameRoute(app, {
+    reader,
+    cost: costService,
+    ...(opts.now ? { now: opts.now } : {}),
+  });
+  registerAgentsRoute(app, { reader });
+
   registerSessionsRoutes(app, {
     config: sessionsOpts.config,
     transcriptsDir: sessionsOpts.transcriptsDir,
@@ -124,6 +179,7 @@ export async function buildServer(opts: BuildServerOptions): Promise<FastifyInst
     readSessionRating: (dataDir, projectName, sessionId) =>
       readSessionRating(dataDir, projectName, sessionId),
     cache,
+    cost: costService,
   });
 
   // v4-6 sessions WRITE API — the one write surface. `rubricAtRating` is

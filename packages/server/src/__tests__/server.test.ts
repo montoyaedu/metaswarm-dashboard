@@ -1,6 +1,6 @@
 // WU-4.{7,8,9,10,11,13,14,15} — Fastify server end-to-end via app.inject().
 
-import { resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
@@ -11,8 +11,23 @@ const DATA_DIR = resolve(import.meta.dirname, 'fixtures/data-dir');
 const STATIC_ROOT = resolve(import.meta.dirname, 'fixtures/spa-dist');
 const NOW = new Date('2026-05-06T12:00:00Z');
 
+/**
+ * Build a server with the v5-7 sessions + cost inputs injected to EMPTY — no
+ * config projects, no Codex tree, no ledger. This pins `/api/projects` to the
+ * snapshot fixtures alone (the v5-7 §7 namespace join would otherwise merge
+ * in the test machine's real config-namespace projects).
+ */
 async function makeApp() {
-  return buildServer({ dataDir: DATA_DIR, staticRoot: STATIC_ROOT, now: () => NOW });
+  return buildServer({
+    dataDir: DATA_DIR,
+    staticRoot: STATIC_ROOT,
+    now: () => NOW,
+    sessions: { config: { projects: [] }, transcriptsDir: DATA_DIR, dataDir: DATA_DIR },
+    cost: {
+      codexSessionsDir: join(DATA_DIR, 'no-codex'),
+      externalToolsLedger: join(DATA_DIR, 'no-ledger.jsonl'),
+    },
+  });
 }
 
 describe('GET /api/projects', () => {
@@ -60,8 +75,18 @@ describe('GET /api/projects/:name', () => {
   });
 
   it('uses the default now() when buildServer is called without a `now` option', async () => {
-    // Covers projects-by-name.ts L19 default-arg branch.
-    const app = await buildServer({ dataDir: DATA_DIR, staticRoot: STATIC_ROOT });
+    // Covers projects-by-name.ts default-arg branch — `now` is omitted, but
+    // the v5-7 sessions + cost inputs are injected EMPTY so the request does
+    // not trigger a §7 cost scan of the test machine's real config.
+    const app = await buildServer({
+      dataDir: DATA_DIR,
+      staticRoot: STATIC_ROOT,
+      sessions: { config: { projects: [] }, transcriptsDir: DATA_DIR, dataDir: DATA_DIR },
+      cost: {
+        codexSessionsDir: join(DATA_DIR, 'no-codex'),
+        externalToolsLedger: join(DATA_DIR, 'no-ledger.jsonl'),
+      },
+    });
     const res = await app.inject({ method: 'GET', url: '/api/projects/alpha' });
     expect(res.statusCode).toBe(200);
     const body = res.json();
