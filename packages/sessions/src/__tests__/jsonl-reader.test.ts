@@ -640,6 +640,140 @@ describe('parseTranscript — SessionTimeline assembly', () => {
   });
 });
 
+describe('parseTranscript — ai-title parse (v5-6, design §3 / §6)', () => {
+  /** An `ai-title` JSONL record — the exact real-transcript shape:
+   *  `{ type, aiTitle, sessionId }`, no timestamp. */
+  function aiTitleRecord(title: string): string {
+    return JSON.stringify({
+      type: 'ai-title',
+      aiTitle: title,
+      sessionId: 'sess-1',
+    });
+  }
+
+  it('populates aiTitle from a transcript carrying an ai-title record', () => {
+    const lines = [
+      assistantText('hello', '2026-05-19T10:00:00.000Z'),
+      aiTitleRecord('Implement the ai-title parser'),
+    ];
+    const p = tmpJsonl('one-title.jsonl', lines.join('\n') + '\n');
+    const tl = parseTranscript(p);
+    expect(tl.aiTitle).toBe('Implement the ai-title parser');
+  });
+
+  it('aiTitle is null when the transcript has no ai-title record (~85% case)', () => {
+    const p = tmpJsonl('no-title.jsonl', assistantText('hello') + '\n');
+    const tl = parseTranscript(p);
+    expect(tl.aiTitle).toBeNull();
+  });
+
+  it('uses the LAST ai-title record when several are present', () => {
+    const lines = [
+      aiTitleRecord('First draft title'),
+      assistantText('work', '2026-05-19T10:00:00.000Z'),
+      aiTitleRecord('Second revised title'),
+      assistantText('more work', '2026-05-19T10:01:00.000Z'),
+      aiTitleRecord('Final title'),
+    ];
+    const p = tmpJsonl('many-titles.jsonl', lines.join('\n') + '\n');
+    const tl = parseTranscript(p);
+    expect(tl.aiTitle).toBe('Final title');
+  });
+
+  it('the ai-title record contributes no ToolUseEvent and is not counted as skipped', () => {
+    const lines = [
+      assistantText('hello', '2026-05-19T10:00:00.000Z'),
+      aiTitleRecord('A title'),
+    ];
+    const p = tmpJsonl('title-no-event.jsonl', lines.join('\n') + '\n');
+    const tl = parseTranscript(p);
+    // One assistant text event; the ai-title record adds nothing.
+    expect(tl.eventCount).toBe(1);
+    expect(tl.skippedLineCount).toBe(0);
+  });
+
+  it('an ai-title record with a non-string aiTitle is ignored (stays null)', () => {
+    const lines = [
+      assistantText('hello', '2026-05-19T10:00:00.000Z'),
+      JSON.stringify({ type: 'ai-title', aiTitle: 123, sessionId: 'sess-1' }),
+    ];
+    const p = tmpJsonl('bad-title.jsonl', lines.join('\n') + '\n');
+    const tl = parseTranscript(p);
+    expect(tl.aiTitle).toBeNull();
+    expect(tl.skippedLineCount).toBe(0);
+  });
+
+  it('an ai-title record missing aiTitle entirely leaves aiTitle null', () => {
+    const lines = [
+      assistantText('hello', '2026-05-19T10:00:00.000Z'),
+      JSON.stringify({ type: 'ai-title', sessionId: 'sess-1' }),
+    ];
+    const p = tmpJsonl('absent-field.jsonl', lines.join('\n') + '\n');
+    const tl = parseTranscript(p);
+    expect(tl.aiTitle).toBeNull();
+  });
+
+  it('an ai-title record with a whitespace-only aiTitle leaves aiTitle null', () => {
+    const lines = [
+      assistantText('hello', '2026-05-19T10:00:00.000Z'),
+      JSON.stringify({ type: 'ai-title', aiTitle: '   \t  ', sessionId: 'sess-1' }),
+    ];
+    const p = tmpJsonl('blank-title.jsonl', lines.join('\n') + '\n');
+    const tl = parseTranscript(p);
+    expect(tl.aiTitle).toBeNull();
+    expect(tl.skippedLineCount).toBe(0);
+  });
+
+  it('an ai-title record with surrounding whitespace yields the trimmed title', () => {
+    const lines = [
+      assistantText('hello', '2026-05-19T10:00:00.000Z'),
+      JSON.stringify({
+        type: 'ai-title',
+        aiTitle: '  Trim me  ',
+        sessionId: 'sess-1',
+      }),
+    ];
+    const p = tmpJsonl('padded-title.jsonl', lines.join('\n') + '\n');
+    const tl = parseTranscript(p);
+    expect(tl.aiTitle).toBe('Trim me');
+  });
+
+  it('a valid ai-title after a malformed one still wins (last valid value)', () => {
+    const lines = [
+      JSON.stringify({ type: 'ai-title', aiTitle: null, sessionId: 'sess-1' }),
+      aiTitleRecord('The good title'),
+    ];
+    const p = tmpJsonl('mixed-titles.jsonl', lines.join('\n') + '\n');
+    const tl = parseTranscript(p);
+    expect(tl.aiTitle).toBe('The good title');
+  });
+
+  it('reads the synthetic ai-title-present fixture: last value wins', () => {
+    const tl = parseTranscript(join(fixturesDir, 'ai-title-present.jsonl'));
+    // The fixture carries three ai-title records; the LAST value is taken.
+    expect(tl.aiTitle).toBe('Implement the ai-title parser branch in jsonl-reader');
+    // The ai-title / last-prompt / permission-mode / system records produce
+    // no events — only the user prompt + two assistant blocks do.
+    expect(tl.eventCount).toBe(3);
+    expect(tl.skippedLineCount).toBe(0);
+  });
+
+  it('reads the synthetic ai-title-absent fixture: aiTitle is null', () => {
+    const tl = parseTranscript(join(fixturesDir, 'ai-title-absent.jsonl'));
+    expect(tl.aiTitle).toBeNull();
+    // user prompt + one assistant block; the other record types are inert.
+    expect(tl.eventCount).toBe(2);
+    expect(tl.skippedLineCount).toBe(0);
+  });
+
+  it('the parsed ai-title fixture timeline passes the Zod SessionTimeline schema', () => {
+    const present = parseTranscript(join(fixturesDir, 'ai-title-present.jsonl'));
+    const absent = parseTranscript(join(fixturesDir, 'ai-title-absent.jsonl'));
+    expect(SessionTimeline.safeParse(present).success).toBe(true);
+    expect(SessionTimeline.safeParse(absent).success).toBe(true);
+  });
+});
+
 describe('parseTranscript — golden-master parity', () => {
   it('synthetic fixture deep-equals the frozen expected timeline', () => {
     const fixturePath = join(fixturesDir, 'synthetic-events.jsonl');

@@ -69,6 +69,9 @@ interface RawEntry {
   /** `true` on a subagent (sidechain) record; absent / `false` on the main
    *  thread. Read by the v5-2 cost carrier (`parseTranscriptUsage`). */
   isSidechain?: unknown;
+  /** The Claude-generated title — present only on an `ai-title` record
+   *  (`{ type:'ai-title', aiTitle, sessionId }`). Read by v5-6 (design §3). */
+  aiTitle?: unknown;
 }
 
 /** A content block inside `message.content`. */
@@ -98,6 +101,9 @@ export function parseTranscript(
   let skippedLineCount = 0;
   let sessionId: string | null = null;
   let projectCwd: string | null = null;
+  // v5-6 (design §3 / §6): the value of the LAST `ai-title` record seen, or
+  // `null` when the transcript carries no `ai-title` record (~85% of files).
+  let aiTitle: string | null = null;
 
   // `ignoreBOM: true` so a leading BOM is NOT silently consumed by the
   // decoder — the parser strips it explicitly (B7) on the first line only,
@@ -171,6 +177,13 @@ export function parseTranscript(
       projectCwd = entry.cwd;
     }
 
+    // v5-6: the LAST `ai-title` record's value wins. A record with no usable
+    // title (`readAiTitle` → null) does NOT clear a title already captured.
+    const recordTitle = readAiTitle(entry);
+    if (recordTitle !== null) {
+      aiTitle = recordTitle;
+    }
+
     const mapped = mapEntry(entry);
     if (mapped === 'malformed') {
       skippedLineCount++;
@@ -204,8 +217,29 @@ export function parseTranscript(
     lastEventAt,
     eventCount: events.length,
     skippedLineCount,
+    // v5-6 (design §3 / §6): always a concrete `string | null` — the last
+    // `ai-title` record's value, or `null` when the transcript has none.
+    aiTitle,
     events,
   };
+}
+
+/**
+ * Read an entry's `ai-title` value: the trimmed `aiTitle` string when the
+ * entry is an `ai-title` record carrying a non-empty string, else `null`.
+ * `parseTranscript` keeps the value of the LAST such record (design §3 / §6).
+ */
+function readAiTitle(entry: RawEntry): string | null {
+  if (entry.type !== 'ai-title') {
+    return null;
+  }
+  // The real record shape is `{ type:'ai-title', aiTitle, sessionId }`. A
+  // non-string / missing / empty `aiTitle` carries no title — treat as none.
+  if (typeof entry.aiTitle !== 'string') {
+    return null;
+  }
+  const title = entry.aiTitle.trim();
+  return title === '' ? null : title;
 }
 
 /**
@@ -214,6 +248,13 @@ export function parseTranscript(
  */
 function mapEntry(entry: RawEntry): ToolUseEvent[] | 'malformed' {
   const { type } = entry;
+  if (type === 'ai-title') {
+    // v5-6 (design §3): an `ai-title` record carries the Claude-generated
+    // session title, not a timeline event. It contributes 0 `ToolUseEvent`s;
+    // its title value is captured separately by `parseTranscript` via
+    // `readAiTitle`. It is NOT counted as a skipped line.
+    return [];
+  }
   if (type !== 'user' && type !== 'assistant') {
     // `summary`, `system`, missing `message`, etc. → 0 events, NOT skipped.
     return [];
