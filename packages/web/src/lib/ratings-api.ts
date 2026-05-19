@@ -8,6 +8,7 @@
 // SPA; this module is the rule's single `ignores` entry. Keeping the write
 // path in exactly one typed module is the SPA-side defense-in-depth.
 
+import type { SessionCost } from '@metaswarm-dashboard/types/cost';
 import type {
   CalibrationSummary,
   OperatorVerdict,
@@ -30,11 +31,22 @@ export class RatingsApiError extends Error {
   }
 }
 
-/** The detail endpoint's response: timeline + rubric + (maybe) a rating. */
+/**
+ * The detail endpoint's response: timeline + rubric + (maybe) a rating.
+ *
+ * v5-7 / v5-9 (design §7, §8.2): the server detail response additionally
+ * carries `cost: SessionCost` (the per-model breakdown) and the
+ * `pricingAsOf` caveat date. Both are additive — they are declared
+ * `.optional()`-style here as `cost?` / `pricingAsOf?` so the v4
+ * `SessionDetail` consumers (and v4 test fixtures that construct a detail
+ * without cost) still type-check; the v5-7 server always populates them.
+ */
 export interface SessionDetail {
   timeline: SessionTimeline;
   rubric: ProcessRubricScore;
   rating: SessionRating | null;
+  cost?: SessionCost;
+  pricingAsOf?: string;
 }
 
 /** Server envelope shapes (design §7) — unwrapped before returning. */

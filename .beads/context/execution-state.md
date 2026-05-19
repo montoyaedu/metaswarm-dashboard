@@ -1,37 +1,45 @@
-# Execution State — sessions-spike v4
+# Execution State — sessions-spike v5
 
 ## Current Position
-- Phase: **v4 COMPLETE** — all 9 WUs committed; §8 Final Comprehensive Review PASS.
-- Next: pre-PR knowledge capture (`/self-reflect`) → present PR-ready state to operator.
-- Branch: `sessions-spike` (NOT pushed — design anti-goal §12.7; operator pushes).
-- Plan: `.beads/plans/active-plan.md` + `docs/plan-sessions-v4.md`.
+- Phase: **v5 SHIPPED** — all 10 WUs done; §8 Final Review PASS;
+  /self-reflect done (7 learnings); **PR #7 open, CI green (3/3)**.
+  Awaiting operator review/merge. `sessions-v5` pushed.
+- Branch: `sessions-v5` (rebased onto `main` after the PR #6 squash-merge;
+  = main + 4 v5 doc commits). NOT pushed since rebase — operator pushes /
+  force-push handled at the human checkpoint.
+- Plan: `.beads/plans/active-plan.md` + `docs/plan-sessions-v5.md`.
+- Design: `docs/design-sessions-spike-v5.md` (gate-approved 5/5).
 
-## v4 work units — ALL DONE
+## v5 work units
 | WU | bead | status |
 |----|------|--------|
-| v4-1 rating schemas | b5z | ✅ COMMITTED |
-| v4-2 shared lifts (config + transcriptsDir) | fhb | ✅ COMMITTED |
-| v4-3 rubric advisory + fixes | 2tf | ✅ COMMITTED |
-| v4-4 transcript-discovery | xyl | ✅ COMMITTED |
-| v4-5 server read API | f27 | ✅ COMMITTED |
-| v4-6 server write API | na3 | ✅ COMMITTED |
-| v4-7 SPA list/detail/nav | qxk | ✅ COMMITTED |
-| v4-8 SPA rating survey + calibration | 26a | ✅ COMMITTED |
-| v4-9 integration + docs | vka | ✅ COMMITTED |
+| v5-1 cost foundation | 2ke | ✅ COMMITTED |
+| v5-2 Claude cost parse | ecq | ✅ COMMITTED |
+| v5-3 Codex reader | e89 | ✅ COMMITTED |
+| v5-4 Gemini ledger reader | r2x | ✅ COMMITTED |
+| v5-5 aggregation | byq | ✅ COMMITTED |
+| v5-6 ai-title + schema | bvk | ✅ COMMITTED |
+| v5-7 server API | 4s0 | ✅ COMMITTED — human checkpoint passed (operator: push + continue) |
+| v5-8 F1 survey panel | 7b3 | ✅ COMMITTED |
+| v5-9 F2 cost widgets list/detail | oiw | ✅ COMMITTED |
+| v5-10 F2 repo views + e2e + docs | 79d | ✅ COMMITTED |
 
-## Final Comprehensive Review (§8)
-- VERDICT: **PASS** — READY FOR PR: YES.
-- Gates at HEAD: build / typecheck / test (867) / lint / coverage all exit 0;
-  coverage lines 100 / branches 98.28 / functions 99.03 / statements 99.53.
-- Cross-unit: dep graph acyclic; types single-sourced; e2e test real-wiring;
-  no leftover TODO/FIXME; §8.1 CSRF trio + method-guard allow-list intact.
+Epic: `metaswarm-dashboard-r9e`.
 
-## Follow-up beads (created post-v4-9)
-- 8qg — 2-week post-merge usage check (M1/M2/M3 + kill switch) — P2.
-- 634 / 8t2 / 5ui / tjc — CLI verbs / aggregation / redactor / recurring cal
-  — each `depends on` 8qg (design §10 gating).
-- qit — dataDir-inside-git hardening; gpz — scope-drift re-intro — P3, ungated.
+## Notes
+- **INTERRUPTED 2026-05-19**: usage limit hit while dispatching the v5-6
+  coder subagent (resets ~03:20 Europe/Rome). Working tree is CLEAN — the
+  v5-6 coder only read files, wrote nothing. v5-1..v5-5 are committed +
+  adversarially reviewed. `sessions-v5` commits are LOCAL only (the branch
+  was rebased onto main; remote `origin/sessions-v5` is pre-rebase — a
+  `--force-with-lease` push is owed, planned for the v5-7 checkpoint).
+  **Resume:** re-dispatch the v5-6 coder, continue the 4-phase loop.
+- Execution order: v5-1 → v5-2 → v5-3 → v5-4 → v5-5 → v5-6 → v5-7
+  (human checkpoint) → v5-8 → v5-9 → v5-10.
+- Each WU: IMPLEMENT (coder subagent, TDD) → VALIDATE (orchestrator,
+  independent gates) → ADVERSARIAL REVIEW (fresh subagent) → COMMIT.
+- Coverage gate: `.coverage-thresholds.json` via `npm run test:coverage`.
 
 ## Recovery
-`bd prime`; read this file + `project-context.md` + `docs/plan-sessions-v4.md`;
-`git log main..sessions-spike`.
+`bd prime`; read this file + `docs/plan-sessions-v5.md` +
+`docs/design-sessions-spike-v5.md`; `git log main..sessions-v5`.

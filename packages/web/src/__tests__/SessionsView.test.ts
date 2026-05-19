@@ -38,6 +38,9 @@ const ALPHA: SessionSummary = {
   lastEventAt: '2026-05-17T06:30:00.000Z',
   eventCount: 12,
   rated: true,
+  aiTitle: 'Refactor the cost calculator',
+  costUsd: 0.0123,
+  hasUnpriced: false,
 };
 
 const BETA: SessionSummary = {
@@ -47,6 +50,9 @@ const BETA: SessionSummary = {
   lastEventAt: '2026-05-17T07:05:00.000Z',
   eventCount: 4,
   rated: false,
+  aiTitle: null,
+  costUsd: null,
+  hasUnpriced: false,
 };
 
 /** An all-zero calibration summary — the SessionsView panel fetches this. */
@@ -117,6 +123,91 @@ describe('SessionsView', () => {
     const w = await mountAt(makeRouter());
     const sid = w.find('[data-testid="session-sid-alpha/abcdef0123456789"]');
     expect(sid.text()).toBe('abcdef01');
+    restore();
+  });
+
+  it('shows a Cost column with the 4-decimal USD figure (v5-9)', async () => {
+    const { restore } = withFetch(() => ({ sessions: [ALPHA] }));
+    const w = await mountAt(makeRouter());
+    const cost = w.find('[data-testid="session-cost-alpha/abcdef0123456789"]');
+    expect(cost.exists()).toBe(true);
+    expect(cost.text()).toBe('$0.0123');
+    restore();
+  });
+
+  it('renders "n/a" in the Cost cell for a session with a null cost (v5-9)', async () => {
+    const { restore } = withFetch(() => ({ sessions: [BETA] }));
+    const w = await mountAt(makeRouter());
+    const cost = w.find('[data-testid="session-cost-beta/bbbbbb1111222233"]');
+    expect(cost.text()).toBe('n/a');
+    restore();
+  });
+
+  it('renders "$0.00" in the Cost cell for a genuine zero-cost session (v5-9)', async () => {
+    const zero: SessionSummary = { ...ALPHA, costUsd: 0 };
+    const { restore } = withFetch(() => ({ sessions: [zero] }));
+    const w = await mountAt(makeRouter());
+    expect(w.find('[data-testid="session-cost-alpha/abcdef0123456789"]').text()).toBe(
+      '$0.00',
+    );
+    restore();
+  });
+
+  it('renders an in-progress session\'s partial cost like any other (v5-9)', async () => {
+    const partial: SessionSummary = { ...ALPHA, costUsd: 0.5 };
+    const { restore } = withFetch(() => ({ sessions: [partial] }));
+    const w = await mountAt(makeRouter());
+    expect(w.find('[data-testid="session-cost-alpha/abcdef0123456789"]').text()).toBe(
+      '$0.5000',
+    );
+    restore();
+  });
+
+  it('treats an absent costUsd field as "n/a" (a v4 summary with no cost)', async () => {
+    const { costUsd: _omit, ...legacy } = ALPHA;
+    void _omit;
+    const { restore } = withFetch(() => ({ sessions: [legacy] }));
+    const w = await mountAt(makeRouter());
+    expect(w.find('[data-testid="session-cost-alpha/abcdef0123456789"]').text()).toBe('n/a');
+    restore();
+  });
+
+  it('shows aiTitle as a title line ABOVE the kept sid suffix (v5-9)', async () => {
+    const { restore } = withFetch(() => ({ sessions: [ALPHA] }));
+    const w = await mountAt(makeRouter());
+    const title = w.find('[data-testid="session-title-alpha/abcdef0123456789"]');
+    const sid = w.find('[data-testid="session-sid-alpha/abcdef0123456789"]');
+    expect(title.exists()).toBe(true);
+    expect(title.text()).toBe('Refactor the cost calculator');
+    // The sid[:8] suffix is KEPT — it is the same-minute disambiguator.
+    expect(sid.exists()).toBe(true);
+    expect(sid.text()).toBe('abcdef01');
+    restore();
+  });
+
+  it('omits the title line (no blank line) when aiTitle is null (v5-9)', async () => {
+    const { restore } = withFetch(() => ({ sessions: [BETA] }));
+    const w = await mountAt(makeRouter());
+    expect(w.find('[data-testid="session-title-beta/bbbbbb1111222233"]').exists()).toBe(
+      false,
+    );
+    // The suffix is still shown.
+    expect(w.find('[data-testid="session-sid-beta/bbbbbb1111222233"]').text()).toBe(
+      'bbbbbb11',
+    );
+    restore();
+  });
+
+  it('renders the aiTitle as text — never via v-html (XSS-safe)', async () => {
+    const xss: SessionSummary = {
+      ...ALPHA,
+      aiTitle: '<img src=x onerror=alert(1)>',
+    };
+    const { restore } = withFetch(() => ({ sessions: [xss] }));
+    const w = await mountAt(makeRouter());
+    const title = w.find('[data-testid="session-title-alpha/abcdef0123456789"]');
+    expect(title.text()).toContain('<img src=x onerror=alert(1)>');
+    expect(title.find('img').exists()).toBe(false);
     restore();
   });
 

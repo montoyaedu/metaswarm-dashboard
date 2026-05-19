@@ -62,6 +62,7 @@ const validTimeline = {
   eventCount: 1,
   skippedLineCount: 0,
   events: [validEvent],
+  aiTitle: 'A Claude-generated session title',
 };
 
 const validRubricScore = {
@@ -88,6 +89,9 @@ const validSummary = {
   lastEventAt: '2026-05-17T12:00:00.000Z',
   eventCount: 1,
   rated: false,
+  aiTitle: 'A Claude-generated session title',
+  costUsd: 1.23,
+  hasUnpriced: false,
 };
 
 // --- valid round-trips -----------------------------------------------------
@@ -140,6 +144,105 @@ describe('valid round-trips', () => {
     if (result.success) {
       expect(result.data).toEqual(validSummary);
     }
+  });
+});
+
+// --- SessionTimeline.aiTitle (v5-6) ----------------------------------------
+
+describe('SessionTimeline.aiTitle (v5-6)', () => {
+  it('parses a timeline carrying a string aiTitle', () => {
+    const result = SessionTimeline.safeParse({
+      ...validTimeline,
+      aiTitle: 'Implement the JSONL transcript parser',
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.aiTitle).toBe('Implement the JSONL transcript parser');
+    }
+  });
+
+  it('parses a timeline with aiTitle = null (the ~85% common case)', () => {
+    const result = SessionTimeline.safeParse({ ...validTimeline, aiTitle: null });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.aiTitle).toBeNull();
+    }
+  });
+
+  it('parses a v4-shaped timeline that omits aiTitle (additive — back-compat)', () => {
+    const result = SessionTimeline.safeParse(omit(validTimeline, 'aiTitle'));
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects a non-string, non-null aiTitle', () => {
+    const result = SessionTimeline.safeParse({ ...validTimeline, aiTitle: 42 });
+    expect(result.success).toBe(false);
+  });
+});
+
+// --- SessionSummary cost fields (v5-6) -------------------------------------
+
+describe('SessionSummary cost fields (v5-6)', () => {
+  it('parses costUsd = null (a session with no costable assistant records)', () => {
+    const result = SessionSummary.safeParse({ ...validSummary, costUsd: null });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.costUsd).toBeNull();
+    }
+  });
+
+  it('parses costUsd = 0 (a genuinely zero-cost session — distinct from null)', () => {
+    const result = SessionSummary.safeParse({ ...validSummary, costUsd: 0 });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.costUsd).toBe(0);
+    }
+  });
+
+  it('parses a positive costUsd', () => {
+    const result = SessionSummary.safeParse({ ...validSummary, costUsd: 4.2 });
+    expect(result.success).toBe(true);
+  });
+
+  it('parses aiTitle = null', () => {
+    const result = SessionSummary.safeParse({ ...validSummary, aiTitle: null });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.aiTitle).toBeNull();
+    }
+  });
+
+  it('parses hasUnpriced = true', () => {
+    const result = SessionSummary.safeParse({ ...validSummary, hasUnpriced: true });
+    expect(result.success).toBe(true);
+  });
+
+  it('parses a v4-shaped summary that omits the v5 cost fields (additive)', () => {
+    const v4Summary = {
+      projectName: 'metaswarm-dashboard',
+      sessionId: 'session-1',
+      startedAt: '2026-05-17T11:59:00.000Z',
+      lastEventAt: '2026-05-17T12:00:00.000Z',
+      eventCount: 1,
+      rated: false,
+    };
+    const result = SessionSummary.safeParse(v4Summary);
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects a non-boolean hasUnpriced', () => {
+    const result = SessionSummary.safeParse({ ...validSummary, hasUnpriced: 'no' });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects a non-number, non-null costUsd', () => {
+    const result = SessionSummary.safeParse({ ...validSummary, costUsd: '1.00' });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects a non-string, non-null aiTitle', () => {
+    const result = SessionSummary.safeParse({ ...validSummary, aiTitle: 7 });
+    expect(result.success).toBe(false);
   });
 });
 

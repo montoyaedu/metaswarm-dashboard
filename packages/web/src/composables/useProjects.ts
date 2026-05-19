@@ -1,10 +1,13 @@
 // Composable: fetches /api/projects and exposes loading/error state.
 
-import type { GetProjectsResponse } from '@metaswarm-dashboard/types/api';
 import { ref, type Ref } from 'vue';
 
 
-import { type ApiClient, createApiClient } from '../api/client.js';
+import {
+  type ApiClient,
+  createApiClient,
+  type GetProjectsResponse,
+} from '../api/client.js';
 
 export interface UseProjectsState {
   projects: Ref<GetProjectsResponse>;

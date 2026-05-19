@@ -1,7 +1,10 @@
-import type { GetProjectByNameResponse } from '@metaswarm-dashboard/types/api';
 import { ref, watch, type Ref } from 'vue';
 
-import { type ApiClient, createApiClient } from '../api/client.js';
+import {
+  type ApiClient,
+  createApiClient,
+  type GetProjectByNameResponse,
+} from '../api/client.js';
 
 export interface UseProjectDetailState {
   detail: Ref<GetProjectByNameResponse | null>;

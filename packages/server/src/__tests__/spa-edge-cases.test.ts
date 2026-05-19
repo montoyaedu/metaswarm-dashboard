@@ -6,7 +6,7 @@ import { join } from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { buildServer } from '../server.js';
+import { buildServer, type BuildServerOptions } from '../server.js';
 
 let TMP: string;
 let DATA_DIR: string;
@@ -17,6 +17,22 @@ beforeEach(() => {
   DATA_DIR = join(TMP, 'data');
   STATIC_ROOT = join(TMP, 'spa');
 });
+
+/**
+ * Build a server with the v5-7 sessions + cost inputs injected to EMPTY, so
+ * a `/api/*` request never triggers the §7 cost scan of the test machine's
+ * real config / `~/.codex/` tree (these SPA tests only exercise routing).
+ */
+function makeApp(opts: Pick<BuildServerOptions, 'dataDir' | 'staticRoot'>) {
+  return buildServer({
+    ...opts,
+    sessions: { config: { projects: [] }, transcriptsDir: opts.dataDir, dataDir: opts.dataDir },
+    cost: {
+      codexSessionsDir: join(opts.dataDir, 'no-codex'),
+      externalToolsLedger: join(opts.dataDir, 'no-ledger.jsonl'),
+    },
+  });
+}
 afterEach(() => {
   rmSync(TMP, { recursive: true, force: true });
 });
@@ -27,7 +43,7 @@ describe('SPA fallback edge cases', () => {
     mkdirSync(STATIC_ROOT, { recursive: true });
     writeFileSync(join(STATIC_ROOT, 'index.html'), '<html><body>hi</body></html>', 'utf8');
 
-    const app = await buildServer({ dataDir: DATA_DIR, staticRoot: STATIC_ROOT });
+    const app = await makeApp({ dataDir: DATA_DIR, staticRoot: STATIC_ROOT });
     const res = await app.inject({ method: 'OPTIONS', url: '/some/path' });
     // OPTIONS isn't /api/* so the method-guard doesn't fire; the
     // setNotFoundHandler returns 404 because the method isn't GET/HEAD.
@@ -41,7 +57,7 @@ describe('SPA fallback edge cases', () => {
     // STATIC_ROOT exists but contains no index.html (we never created it).
     mkdirSync(STATIC_ROOT, { recursive: true });
 
-    const app = await buildServer({ dataDir: DATA_DIR, staticRoot: STATIC_ROOT });
+    const app = await makeApp({ dataDir: DATA_DIR, staticRoot: STATIC_ROOT });
     const res = await app.inject({ method: 'GET', url: '/anything' });
     expect(res.statusCode).toBe(500);
     const body = res.json();
@@ -56,7 +72,7 @@ describe('Method guard — v4-6 re-scope (allow-list)', () => {
   it('still 405s a non-allow-listed write on /api/* (HEAD pass-through preserved)', async () => {
     mkdirSync(STATIC_ROOT, { recursive: true });
     writeFileSync(join(STATIC_ROOT, 'index.html'), '<html><body>hi</body></html>', 'utf8');
-    const app = await buildServer({ dataDir: DATA_DIR, staticRoot: STATIC_ROOT });
+    const app = await makeApp({ dataDir: DATA_DIR, staticRoot: STATIC_ROOT });
 
     const post = await app.inject({ method: 'POST', url: '/api/projects' });
     expect(post.statusCode).toBe(405);
@@ -71,7 +87,7 @@ describe('Method guard — v4-6 re-scope (allow-list)', () => {
   it('does NOT 405 the one allow-listed PUT rating route', async () => {
     mkdirSync(STATIC_ROOT, { recursive: true });
     writeFileSync(join(STATIC_ROOT, 'index.html'), '<html><body>hi</body></html>', 'utf8');
-    const app = await buildServer({ dataDir: DATA_DIR, staticRoot: STATIC_ROOT });
+    const app = await makeApp({ dataDir: DATA_DIR, staticRoot: STATIC_ROOT });
     const res = await app.inject({
       method: 'PUT',
       url: '/api/sessions/alpha/sess-a1/rating',
@@ -85,7 +101,7 @@ describe('Method guard — v4-6 re-scope (allow-list)', () => {
   it('still 405s a PUT that only resembles the rating route (trailing slash / query / extra segment / case variant)', async () => {
     mkdirSync(STATIC_ROOT, { recursive: true });
     writeFileSync(join(STATIC_ROOT, 'index.html'), '<html><body>hi</body></html>', 'utf8');
-    const app = await buildServer({ dataDir: DATA_DIR, staticRoot: STATIC_ROOT });
+    const app = await makeApp({ dataDir: DATA_DIR, staticRoot: STATIC_ROOT });
     for (const url of [
       '/api/sessions/alpha/sess-a1/rating/',
       '/api/sessions/alpha/sess-a1/rating?x=1',
@@ -102,7 +118,7 @@ describe('Method guard — v4-6 re-scope (allow-list)', () => {
   it('still 405s POST/DELETE/PATCH on the exact rating path (only PUT is allowed)', async () => {
     mkdirSync(STATIC_ROOT, { recursive: true });
     writeFileSync(join(STATIC_ROOT, 'index.html'), '<html><body>hi</body></html>', 'utf8');
-    const app = await buildServer({ dataDir: DATA_DIR, staticRoot: STATIC_ROOT });
+    const app = await makeApp({ dataDir: DATA_DIR, staticRoot: STATIC_ROOT });
     for (const method of ['POST', 'DELETE', 'PATCH'] as const) {
       const res = await app.inject({
         method,

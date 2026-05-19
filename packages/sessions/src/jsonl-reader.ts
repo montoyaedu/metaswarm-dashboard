@@ -17,6 +17,7 @@
 import { readFileSync as nodeReadFileSync, statSync as nodeStatSync } from 'node:fs';
 import { basename } from 'node:path';
 
+import type { TokenUsage } from '@metaswarm-dashboard/types/cost';
 import type {
   SessionTimeline,
   ToolUseEvent,
@@ -65,6 +66,12 @@ interface RawEntry {
   sessionId?: unknown;
   cwd?: unknown;
   message?: unknown;
+  /** `true` on a subagent (sidechain) record; absent / `false` on the main
+   *  thread. Read by the v5-2 cost carrier (`parseTranscriptUsage`). */
+  isSidechain?: unknown;
+  /** The Claude-generated title — present only on an `ai-title` record
+   *  (`{ type:'ai-title', aiTitle, sessionId }`). Read by v5-6 (design §3). */
+  aiTitle?: unknown;
 }
 
 /** A content block inside `message.content`. */
@@ -94,6 +101,9 @@ export function parseTranscript(
   let skippedLineCount = 0;
   let sessionId: string | null = null;
   let projectCwd: string | null = null;
+  // v5-6 (design §3 / §6): the value of the LAST `ai-title` record seen, or
+  // `null` when the transcript carries no `ai-title` record (~85% of files).
+  let aiTitle: string | null = null;
 
   // `ignoreBOM: true` so a leading BOM is NOT silently consumed by the
   // decoder — the parser strips it explicitly (B7) on the first line only,
@@ -167,6 +177,13 @@ export function parseTranscript(
       projectCwd = entry.cwd;
     }
 
+    // v5-6: the LAST `ai-title` record's value wins. A record with no usable
+    // title (`readAiTitle` → null) does NOT clear a title already captured.
+    const recordTitle = readAiTitle(entry);
+    if (recordTitle !== null) {
+      aiTitle = recordTitle;
+    }
+
     const mapped = mapEntry(entry);
     if (mapped === 'malformed') {
       skippedLineCount++;
@@ -200,8 +217,29 @@ export function parseTranscript(
     lastEventAt,
     eventCount: events.length,
     skippedLineCount,
+    // v5-6 (design §3 / §6): always a concrete `string | null` — the last
+    // `ai-title` record's value, or `null` when the transcript has none.
+    aiTitle,
     events,
   };
+}
+
+/**
+ * Read an entry's `ai-title` value: the trimmed `aiTitle` string when the
+ * entry is an `ai-title` record carrying a non-empty string, else `null`.
+ * `parseTranscript` keeps the value of the LAST such record (design §3 / §6).
+ */
+function readAiTitle(entry: RawEntry): string | null {
+  if (entry.type !== 'ai-title') {
+    return null;
+  }
+  // The real record shape is `{ type:'ai-title', aiTitle, sessionId }`. A
+  // non-string / missing / empty `aiTitle` carries no title — treat as none.
+  if (typeof entry.aiTitle !== 'string') {
+    return null;
+  }
+  const title = entry.aiTitle.trim();
+  return title === '' ? null : title;
 }
 
 /**
@@ -210,6 +248,13 @@ export function parseTranscript(
  */
 function mapEntry(entry: RawEntry): ToolUseEvent[] | 'malformed' {
   const { type } = entry;
+  if (type === 'ai-title') {
+    // v5-6 (design §3): an `ai-title` record carries the Claude-generated
+    // session title, not a timeline event. It contributes 0 `ToolUseEvent`s;
+    // its title value is captured separately by `parseTranscript` via
+    // `readAiTitle`. It is NOT counted as a skipped line.
+    return [];
+  }
   if (type !== 'user' && type !== 'assistant') {
     // `summary`, `system`, missing `message`, etc. → 0 events, NOT skipped.
     return [];
@@ -409,4 +454,167 @@ const WHITESPACE_OR_CONTROL_RUN = /[\s\u0000-\u001F\u007F-\u009F]+/g;
 /** Collapse whitespace/control runs to a single space, trim, slice to 200. */
 function normalizeSummary(raw: string): string {
   return raw.replace(WHITESPACE_OR_CONTROL_RUN, ' ').trim().slice(0, SUMMARY_MAX);
+}
+
+// ---------------------------------------------------------------------------
+// v5-2 — Claude token-usage / model carrier (design §4.1 / §5.2).
+//
+// CARRIER DECISION (DoD: "additive only — the carrier must not alter existing
+// event shapes"). v5-2 surfaces per-`assistant`-record `message.usage` +
+// `message.model` via a SEPARATE exported function — `parseTranscriptUsage` —
+// that returns a NEW, non-event `AssistantUsageRecord[]`. `parseTranscript`,
+// `SessionTimeline` and `ToolUseEvent` are left BYTE-FOR-BYTE unchanged: a v4
+// timeline consumer still type-checks and behaves identically.
+//
+// Why a second function and not a field on `ToolUseEvent` / `SessionTimeline`:
+//   - Token usage is a per-RECORD figure (one `assistant` JSONL entry), while
+//     a `ToolUseEvent` is a per-BLOCK projection — one assistant record fans
+//     out to several events. Hanging usage off an event would force an
+//     arbitrary "which event owns the record's usage" choice and risk
+//     double-counting when `computeSessionCost` sums.
+//   - `parseTranscript` is deliberately Zod-free on its hot path; an additive
+//     sibling keeps that property and keeps the v4 timeline schema frozen.
+// `computeSessionCost` (cost/session-cost.ts) consumes the `AssistantUsageRecord[]`.
+// ---------------------------------------------------------------------------
+
+/**
+ * One `assistant` JSONL record's token usage + model — the v5-2 cost carrier.
+ * Produced by `parseTranscriptUsage`; consumed by `computeSessionCost`. This
+ * is NOT a `ToolUseEvent` and never enters a `SessionTimeline`.
+ */
+export interface AssistantUsageRecord {
+  /** The raw `message.model` id (a dated-suffix alias is normalized later). */
+  model: string;
+  /** `true` for a subagent (sidechain) record; cost counts both (design §4.1). */
+  isSidechain: boolean;
+  /** The record's normalized `TokenUsage` (top-level figures — design §4.1). */
+  usage: TokenUsage;
+}
+
+/** A coerced non-negative integer; any non-number / negative becomes 0. */
+function intOr0(value: unknown): number {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0
+    ? Math.trunc(value)
+    : 0;
+}
+
+/**
+ * Normalize one raw `assistant` `message.usage` object to a `TokenUsage`
+ * (design §4.1 / §5.2). The TOP-LEVEL `input_tokens` / `output_tokens` /
+ * `cache_read_input_tokens` figures are used — these are already cumulative
+ * for the record; the `usage.iterations[]` array is deliberately NOT summed.
+ * The `cache_creation.ephemeral_5m/1h_input_tokens` split is preserved as the
+ * two distinct fields the §5.2 formula prices separately. A Claude record has
+ * no reasoning tokens, so `reasoningTokens` is always 0 here.
+ *
+ * `usage` is guaranteed a non-null object by the caller (`parseTranscriptUsage`
+ * skips a record before this point if `message.usage` is null / not an object),
+ * so this function only has to guard the nested `cache_creation` field.
+ */
+function normalizeUsage(u: Record<string, unknown>): TokenUsage {
+  const cacheCreation: Record<string, unknown> =
+    u.cache_creation !== null && typeof u.cache_creation === 'object'
+      ? (u.cache_creation as Record<string, unknown>)
+      : {};
+  return {
+    inputTokens: intOr0(u.input_tokens),
+    outputTokens: intOr0(u.output_tokens),
+    cacheReadTokens: intOr0(u.cache_read_input_tokens),
+    cacheCreation5mTokens: intOr0(cacheCreation.ephemeral_5m_input_tokens),
+    cacheCreation1hTokens: intOr0(cacheCreation.ephemeral_1h_input_tokens),
+    reasoningTokens: 0,
+  };
+}
+
+/**
+ * Extract per-`assistant`-record token usage + model from a Claude Code JSONL
+ * transcript — the v5-2 cost carrier (design §4.1).
+ *
+ * This is ADDITIVE to `parseTranscript`: it shares the same robust raw-Buffer
+ * line splitting (the >1 MiB cap, the fatal UTF-8 decoder, malformed-line
+ * skipping) but produces `AssistantUsageRecord[]` instead of a timeline. An
+ * `assistant` record with no usable `message.usage` is skipped. Both main-
+ * thread and `isSidechain` subagent records are captured (design §4.1).
+ *
+ * @param filePath - Path to the `.jsonl` transcript (or subagent) file.
+ * @param fs - Optional filesystem hooks (defaults to `node:fs`).
+ * @returns One `AssistantUsageRecord` per assistant record carrying usage,
+ *   in file order. A transcript with zero assistant records yields `[]`.
+ */
+export function parseTranscriptUsage(
+  filePath: string,
+  fs: JsonlReaderFsHooks = DEFAULT_FS,
+): AssistantUsageRecord[] {
+  const buffer = fs.readFileSync(filePath);
+  const records: AssistantUsageRecord[] = [];
+
+  const decoder = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true });
+  let lineStart = 0;
+  let lineIndex = 0;
+  for (let i = 0; i <= buffer.length; i++) {
+    if (i < buffer.length && buffer[i] !== NEWLINE_BYTE) {
+      continue;
+    }
+    const segment = buffer.subarray(lineStart, i);
+    const isFirstLine = lineIndex === 0;
+    lineStart = i + 1;
+    lineIndex++;
+
+    // B8: a >1 MiB line is skipped without being decoded.
+    if (segment.length > MAX_LINE_BYTES) {
+      continue;
+    }
+
+    // B9: a fatal decoder throws on invalid UTF-8 → skip.
+    let text: string;
+    try {
+      text = decoder.decode(segment);
+    } catch {
+      continue;
+    }
+    if (text.endsWith(CARRIAGE_RETURN)) {
+      text = text.slice(0, -1);
+    }
+    if (isFirstLine && text.startsWith(BOM)) {
+      text = text.slice(BOM.length);
+    }
+    if (text.trim() === '') {
+      continue;
+    }
+
+    // B3–B5: a malformed JSON line is skipped, never thrown.
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      continue;
+    }
+    if (parsed === null || typeof parsed !== 'object') {
+      continue;
+    }
+    const entry = parsed as RawEntry;
+    if (entry.type !== 'assistant') {
+      continue;
+    }
+
+    const message = entry.message;
+    if (message === null || typeof message !== 'object') {
+      continue;
+    }
+    const model = (message as { model?: unknown }).model;
+    const usage = (message as { usage?: unknown }).usage;
+    // An assistant record with no string model or no usable usage object
+    // carries no cost signal — skip it.
+    if (typeof model !== 'string' || usage === null || typeof usage !== 'object') {
+      continue;
+    }
+
+    records.push({
+      model,
+      isSidechain: entry.isSidechain === true,
+      usage: normalizeUsage(usage as Record<string, unknown>),
+    });
+  }
+
+  return records;
 }

@@ -1,0 +1,92 @@
+{
+  "pricingAsOf": "2026-05-18",
+  "source": "Vendor public pricing pages — see ./model-prices.source.md. Per-1M-token USD. The operator MUST verify these rates against the vendors' current pricing before relying on the figures.",
+  "models": {
+    "claude-opus-4-7": {
+      "vendor": "anthropic",
+      "input": 15,
+      "output": 75,
+      "cacheRead": 1.5,
+      "cacheWrite5m": 18.75,
+      "cacheWrite1h": 30
+    },
+    "claude-opus-4-6": {
+      "vendor": "anthropic",
+      "input": 15,
+      "output": 75,
+      "cacheRead": 1.5,
+      "cacheWrite5m": 18.75,
+      "cacheWrite1h": 30
+    },
+    "claude-opus-4-5": {
+      "vendor": "anthropic",
+      "input": 5,
+      "output": 25,
+      "cacheRead": 0.5,
+      "cacheWrite5m": 6.25,
+      "cacheWrite1h": 10
+    },
+    "claude-sonnet-4-5": {
+      "vendor": "anthropic",
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite5m": 3.75,
+      "cacheWrite1h": 6
+    },
+    "claude-sonnet-4-1": {
+      "vendor": "anthropic",
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite5m": 3.75,
+      "cacheWrite1h": 6
+    },
+    "claude-sonnet-4-0": {
+      "vendor": "anthropic",
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
+      "cacheWrite5m": 3.75,
+      "cacheWrite1h": 6
+    },
+    "claude-haiku-4-5": {
+      "vendor": "anthropic",
+      "input": 1,
+      "output": 5,
+      "cacheRead": 0.1,
+      "cacheWrite5m": 1.25,
+      "cacheWrite1h": 2
+    },
+    "gpt-5.5": {
+      "vendor": "openai",
+      "input": 1.25,
+      "output": 10,
+      "cacheRead": 0.125
+    },
+    "gpt-5.3-codex": {
+      "vendor": "openai",
+      "input": 1.25,
+      "output": 10,
+      "cacheRead": 0.125
+    },
+    "gpt-5.1-codex": {
+      "vendor": "openai",
+      "input": 1.25,
+      "output": 10,
+      "cacheRead": 0.125
+    },
+    "gemini-2.5-pro": {
+      "vendor": "google",
+      "input": 1.25,
+      "output": 10,
+      "cacheRead": 0.31
+    },
+    "gemini-3-pro": {
+      "vendor": "google",
+      "input": 2,
+      "output": 12,
+      "cacheRead": 0.2
+    }
+  }
+}

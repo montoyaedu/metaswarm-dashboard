@@ -65,6 +65,49 @@ export function transcriptsDir(env: PathsEnv = defaultEnv()): string {
 }
 
 /**
+ * Resolve the directory holding Codex CLI run telemetry (rollout files).
+ *
+ * Precedence:
+ *   1. `METASWARM_DASHBOARD_CODEX_SESSIONS_DIR` env var (if set).
+ *   2. `~/.codex/sessions` (the default Codex CLI rollout location).
+ *
+ * Codex CLI writes one `rollout-<ts>-<uuid>.jsonl` per run under
+ * `~/.codex/sessions/<YYYY>/<MM>/<DD>/` on every OS, so the default is
+ * platform-independent — mirroring `transcriptsDir`. The rotated
+ * `~/.codex/archived_sessions/` tree is deliberately NOT covered by this
+ * helper (sessions-spike design §2 — out of scope for v5).
+ */
+export function codexSessionsDir(env: PathsEnv = defaultEnv()): string {
+  const override = env.env.METASWARM_DASHBOARD_CODEX_SESSIONS_DIR;
+  if (override !== undefined && override !== '') {
+    return expandHome(override, env.homeDir);
+  }
+  return join(env.homeDir, '.codex', 'sessions');
+}
+
+/**
+ * Resolve the metaswarm external-tools ledger file.
+ *
+ * Precedence:
+ *   1. `METASWARM_DASHBOARD_EXTERNAL_TOOLS_LEDGER` env var (if set).
+ *   2. `~/.claude/sessions/external-tools.jsonl` (metaswarm's default).
+ *
+ * metaswarm's external-tools adapter (`log_session` in
+ * `skills/external-tools/adapters/_common.sh`) appends one JSONL envelope
+ * per Codex/Gemini delegation run to this single file. It is the only
+ * capture point for Gemini token usage (Gemini CLI persists nothing to
+ * disk — sessions-spike design §4.3). The default is platform-independent,
+ * mirroring `transcriptsDir` / `codexSessionsDir`.
+ */
+export function externalToolsLedger(env: PathsEnv = defaultEnv()): string {
+  const override = env.env.METASWARM_DASHBOARD_EXTERNAL_TOOLS_LEDGER;
+  if (override !== undefined && override !== '') {
+    return expandHome(override, env.homeDir);
+  }
+  return join(env.homeDir, '.claude', 'sessions', 'external-tools.jsonl');
+}
+
+/**
  * Resolve the dashboard config file path.
  *
  * Precedence:

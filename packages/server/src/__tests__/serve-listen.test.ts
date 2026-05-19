@@ -69,6 +69,34 @@ describe('runServe — actual listen()', () => {
     mkdirSync(staticRoot, { recursive: true });
     writeFileSync(join(staticRoot, 'index.html'), '<html></html>', 'utf8');
 
+    // v5-7: pin the §7 cost sources to empty temp paths so the `/api/projects`
+    // request below does not scan the test machine's real `~/.codex/` tree
+    // (which can be large enough to time out under coverage instrumentation).
+    // A real, empty config file is written so `runServe`'s fail-fast config
+    // check passes while the resolved config carries zero projects.
+    const emptyConfig = join(tmp, 'config.yaml');
+    writeFileSync(emptyConfig, 'projects: []\n', 'utf8');
+    const priorEnv = {
+      config: process.env.METASWARM_DASHBOARD_CONFIG,
+      codex: process.env.METASWARM_DASHBOARD_CODEX_SESSIONS_DIR,
+      ledger: process.env.METASWARM_DASHBOARD_EXTERNAL_TOOLS_LEDGER,
+      transcripts: process.env.METASWARM_DASHBOARD_TRANSCRIPTS_DIR,
+    };
+    process.env.METASWARM_DASHBOARD_CONFIG = emptyConfig;
+    process.env.METASWARM_DASHBOARD_CODEX_SESSIONS_DIR = join(tmp, 'no-codex');
+    process.env.METASWARM_DASHBOARD_EXTERNAL_TOOLS_LEDGER = join(tmp, 'no-ledger.jsonl');
+    process.env.METASWARM_DASHBOARD_TRANSCRIPTS_DIR = join(tmp, 'no-transcripts');
+    const restoreEnv = (): void => {
+      const set = (k: string, v: string | undefined): void => {
+        if (v === undefined) delete process.env[k];
+        else process.env[k] = v;
+      };
+      set('METASWARM_DASHBOARD_CONFIG', priorEnv.config);
+      set('METASWARM_DASHBOARD_CODEX_SESSIONS_DIR', priorEnv.codex);
+      set('METASWARM_DASHBOARD_EXTERNAL_TOOLS_LEDGER', priorEnv.ledger);
+      set('METASWARM_DASHBOARD_TRANSCRIPTS_DIR', priorEnv.transcripts);
+    };
+
     // We spawn runServe with skipListen=false. It will block on
     // app.listen() until we close the underlying socket. To do this
     // cleanly, we race: kick off runServe, then after a short delay
@@ -101,6 +129,7 @@ describe('runServe — actual listen()', () => {
       // returned without throwing the validation error.
     }
 
+    restoreEnv();
     rmSync(tmp, { recursive: true, force: true });
   });
 });

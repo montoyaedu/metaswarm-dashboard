@@ -10,6 +10,7 @@ import type {
 import type {
   ProcessRubricScore,
   RubricKey,
+  SessionTimeline,
 } from '@metaswarm-dashboard/types/sessions';
 import { flushPromises, mount } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
@@ -70,6 +71,23 @@ function fakeApi(
   };
 }
 
+/** A minimal `SessionTimeline` for the F1 context panel — these tests
+ *  exercise the rating-survey behaviour, not the panel itself. */
+function makeTimeline(): SessionTimeline {
+  return {
+    schemaVersion: 1,
+    transcriptPath: '/transcripts/alpha/sess-a1.jsonl',
+    sessionId: 'sess-a1',
+    projectCwd: '/repos/alpha',
+    startedAt: '2026-05-17T06:00:00.000Z',
+    lastEventAt: '2026-05-17T06:30:00.000Z',
+    eventCount: 0,
+    skippedLineCount: 0,
+    events: [],
+    aiTitle: null,
+  };
+}
+
 function mountSurvey(opts: {
   rating?: SessionRating | null;
   api?: RatingsApi;
@@ -81,6 +99,7 @@ function mountSurvey(opts: {
       sessionId: 'sess-a1',
       rubric: opts.rubric ?? makeRubric(),
       rating: opts.rating ?? null,
+      timeline: makeTimeline(),
       api: opts.api ?? fakeApi(() => Promise.resolve(makeRating([]))),
     },
   });

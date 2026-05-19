@@ -179,18 +179,67 @@ Open the dashboard and navigate to **Sessions** from the nav bar:
   operator agreement, with a sample-size floor (`N ≥ 5`) so small-N noise is
   not mistaken for signal.
 
+### AI cost
+
+The dashboard also computes the **AI cost** of each session and project from
+the transcripts and delegation-tool logs your agents leave behind. Cost is
+**computed on read** — nothing is persisted, no new datalake file is created.
+
+- **How it is computed.** Each Claude Code `assistant` record carries a
+  `message.usage` token tally (input / output / cache-read / cache-write,
+  including the `ephemeral_1h` / `ephemeral_5m` cache-write split) and a
+  `message.model`. The dashboard multiplies those token counts by a **pinned,
+  in-repo price table** (`packages/sessions/src/cost/model-prices.json`). A
+  session's cost is the sum over its `assistant` records — the main transcript
+  **and** every sibling `subagents/agent-*.jsonl` subagent file. Codex runs are
+  read from `~/.codex/sessions/`, Gemini runs from metaswarm's
+  `external-tools.jsonl` ledger.
+- **The pinned price table.** Prices are **version-controlled, not fetched** —
+  no network calls, no live pricing. The table carries a `pricingAsOf` date;
+  the dashboard surfaces it as a small *"AI prices as of YYYY-MM-DD"* footnote
+  on every cost view so a stale table is visible at a glance. **Verify the
+  rates against the vendors' current public pricing** before relying on the
+  figures — see `model-prices.source.md` for the cited sources.
+- **Unknown / unpriced models.** A model id absent from the price table is
+  **never costed as `$0`** — that would be indistinguishable from a genuinely
+  free run. It renders `"n/a"`, and any total it contributes to is shown as a
+  lower bound: `"$X + unpriced"`.
+- **Per-vendor breakdown.** The project detail view shows a per-vendor cost
+  row for **all three** vendors (Anthropic / OpenAI / Google) — a vendor with
+  no runs still shows `"$0.00 (0 runs)"`, so you can see it was considered.
+  Gemini ledger records carry no working directory, so Gemini cost is reported
+  in an `unattributed` row on the projects index rather than against a
+  specific project.
+
+### Security note — prompt text may contain secrets
+
+The session survey panel surfaces **full user-prompt text** and the session's
+AI-generated title (`aiTitle`). Like the tool-use `summary` strings, these
+**may contain operator secrets** (a prompt can paste an API key, a token, a
+password). This is **accepted, not an oversight**: the dashboard is
+localhost-only — no CORS, no telemetry, no outbound fetch — so the content
+never leaves your machine. The in-repo secret-scan that guards committed
+fixtures does **not** cover prompt text (prompts are not in-repo). If you
+share screenshots or screen-share the `/sessions` view, treat prompt text as
+potentially sensitive. See `docs/follow-ups/sessions.md` for the full
+acceptance record.
+
 ### Where transcripts and ratings live
 
 The dashboard reads transcripts from `~/.claude/projects/` by default.
 Override the location with the `METASWARM_DASHBOARD_TRANSCRIPTS_DIR` env var
 (set the same value for `serve` as wherever Claude Code writes its
-transcripts).
+transcripts). The Codex sessions tree and the metaswarm external-tools ledger
+default to `~/.codex/sessions/` and `~/.claude/sessions/external-tools.jsonl`;
+override them with `METASWARM_DASHBOARD_CODEX_SESSIONS_DIR` and
+`METASWARM_DASHBOARD_EXTERNAL_TOOLS_LEDGER`.
 
 Your ratings are written **only to the dashboard's own data dir** (the same
 XDG-aware datalake `collect` uses) — one `<sessionId>.rating.json` per rated
-session. Transcripts under `~/.claude/projects/` and your observed repos are
-**never modified**: the zero-footprint invariant holds for the Sessions
-feature exactly as it does for `collect`.
+session. Transcripts under `~/.claude/projects/`, `~/.codex/sessions/`, the
+external-tools ledger, and your observed repos are **never modified**: the
+zero-footprint invariant holds for the Sessions feature exactly as it does
+for `collect`. AI cost is computed in memory and never written to disk.
 
 ## Troubleshooting
 

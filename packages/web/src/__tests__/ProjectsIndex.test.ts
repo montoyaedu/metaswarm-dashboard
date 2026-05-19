@@ -1,13 +1,16 @@
 // WU-5.{2,3,4,5} — ProjectsIndex view: card-per-project rendering, click→detail
 // nav, back-nav minimal (with stub ProjectDetail), empty state, dark theme provider.
 
-import type { ProjectSummary } from '@metaswarm-dashboard/types/api';
 import { mount, flushPromises } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
 import { defineComponent, h } from 'vue';
 import { createMemoryHistory, createRouter, RouterView, type Router } from 'vue-router';
 
+import type { ProjectSummaryWithCost } from '../api/client.js';
 import ProjectsIndex from '../views/ProjectsIndex.vue';
+
+/** A `ProjectSummary` with the v5-7 cost fields — the SPA-visible row shape. */
+type ProjectSummary = ProjectSummaryWithCost;
 
 function makeRouterWithProjectsIndex(): Router {
   return createRouter({
@@ -244,6 +247,121 @@ describe('ProjectsIndex', () => {
     await flushPromises();
     expect(router.currentRoute.value.name).toBe('projects-index');
     expect(w.find('[data-testid="projects-index"]').exists()).toBe(true);
+    restore();
+  });
+
+  // --- v5-10: per-card AI cost + the once-per-view pricing footnote --------
+
+  it('each project card shows its total AI cost', async () => {
+    const restore = withFetch([
+      {
+        name: 'alpha',
+        activeTasks: 1,
+        blockedTasks: 0,
+        prsMergedLast7d: null,
+        lastActivityAt: null,
+        path: '/tmp/p',
+        category: 'metaswarm',
+        hasMetrics: true,
+        collectionStatus: 'ok',
+        collectionWarnings: [],
+        totalCostUsd: 9.99,
+        hasUnpriced: false,
+        pricingAsOf: '2026-05-18',
+      },
+      {
+        name: 'beta',
+        activeTasks: 0,
+        blockedTasks: 0,
+        prsMergedLast7d: null,
+        lastActivityAt: null,
+        path: '/tmp/p',
+        category: 'metaswarm',
+        hasMetrics: true,
+        collectionStatus: 'ok',
+        collectionWarnings: [],
+        totalCostUsd: 1.5,
+        hasUnpriced: true,
+        pricingAsOf: '2026-05-18',
+      },
+    ]);
+    const router = makeRouterWithProjectsIndex();
+    const w = mount(App, { global: { plugins: [router] } });
+    await router.push('/');
+    await router.isReady();
+    await flushPromises();
+    expect(w.find('[data-testid="metric-ai-cost-alpha"]').text()).toBe('$9.9900');
+    // `beta` has unpriced runs → "$X + unpriced", never a bare number.
+    expect(w.find('[data-testid="metric-ai-cost-beta"]').text()).toBe('$1.5000 + unpriced');
+    restore();
+  });
+
+  it('renders the "AI prices as of" footnote once per view', async () => {
+    const restore = withFetch([
+      {
+        name: 'alpha',
+        activeTasks: 1,
+        blockedTasks: 0,
+        prsMergedLast7d: null,
+        lastActivityAt: null,
+        path: '/Users/me/code/alpha',
+        category: 'metaswarm',
+        hasMetrics: true,
+        collectionStatus: 'ok',
+        collectionWarnings: [],
+        totalCostUsd: 1,
+        hasUnpriced: false,
+        pricingAsOf: '2026-05-18',
+      },
+      {
+        name: 'beta',
+        activeTasks: 0,
+        blockedTasks: 0,
+        prsMergedLast7d: null,
+        lastActivityAt: null,
+        path: '/Users/me/work/beta',
+        category: 'metaswarm',
+        hasMetrics: true,
+        collectionStatus: 'ok',
+        collectionWarnings: [],
+        totalCostUsd: 2,
+        hasUnpriced: false,
+        pricingAsOf: '2026-05-18',
+      },
+    ]);
+    const router = makeRouterWithProjectsIndex();
+    const w = mount(App, { global: { plugins: [router] } });
+    await router.push('/');
+    await router.isReady();
+    await flushPromises();
+    // Exactly one footnote even though there are two cards across two groups.
+    const footnotes = w.findAll('[data-testid="projects-pricing-asof"]');
+    expect(footnotes).toHaveLength(1);
+    expect(footnotes[0]?.text()).toContain('AI prices as of 2026-05-18');
+    restore();
+  });
+
+  it('omits the pricing footnote when no row carries a pricingAsOf (v4-shaped rows)', async () => {
+    const restore = withFetch([
+      {
+        name: 'alpha',
+        activeTasks: 1,
+        blockedTasks: 0,
+        prsMergedLast7d: null,
+        lastActivityAt: null,
+        path: '/tmp/p',
+        category: 'metaswarm',
+        hasMetrics: true,
+        collectionStatus: 'ok',
+        collectionWarnings: [],
+      },
+    ]);
+    const router = makeRouterWithProjectsIndex();
+    const w = mount(App, { global: { plugins: [router] } });
+    await router.push('/');
+    await router.isReady();
+    await flushPromises();
+    expect(w.find('[data-testid="projects-pricing-asof"]').exists()).toBe(false);
     restore();
   });
 });

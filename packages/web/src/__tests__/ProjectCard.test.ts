@@ -1,9 +1,12 @@
-import type { ProjectSummary } from '@metaswarm-dashboard/types/api';
 import { mount, flushPromises } from '@vue/test-utils';
 import { describe, expect, it } from 'vitest';
 import { createMemoryHistory, createRouter, type Router } from 'vue-router';
 
+import type { ProjectSummaryWithCost } from '../api/client.js';
 import ProjectCard from '../components/ProjectCard.vue';
+
+/** A `ProjectSummary` with the v5-7 cost fields — the SPA-visible row shape. */
+type ProjectSummary = ProjectSummaryWithCost;
 
 const HasMetrics: ProjectSummary = {
   name: 'alpha',
@@ -227,5 +230,65 @@ describe('ProjectCard', () => {
     await flushPromises();
     expect(router.currentRoute.value.name).toBe('project-detail');
     expect(router.currentRoute.value.params.name).toBe('alpha');
+  });
+
+  // --- v5-10: per-card AI cost (design §8.2) -------------------------------
+
+  it('shows the project total AI cost (formatUsd, 4-decimal)', async () => {
+    const router = makeRouter();
+    await router.push('/');
+    await router.isReady();
+    const w = mount(ProjectCard, {
+      props: { project: { ...HasMetrics, totalCostUsd: 12.3456, hasUnpriced: false } },
+      global: { plugins: [router] },
+    });
+    expect(w.find('[data-testid="metric-ai-cost-alpha"]').text()).toBe('$12.3456');
+  });
+
+  it('renders "$0.00" for a zero-cost project (never "n/a")', async () => {
+    const router = makeRouter();
+    await router.push('/');
+    await router.isReady();
+    const w = mount(ProjectCard, {
+      props: { project: { ...HasMetrics, totalCostUsd: 0, hasUnpriced: false } },
+      global: { plugins: [router] },
+    });
+    expect(w.find('[data-testid="metric-ai-cost-alpha"]').text()).toBe('$0.00');
+  });
+
+  it('renders "$X + unpriced" when hasUnpriced is true (never a bare number, never "n/a")', async () => {
+    const router = makeRouter();
+    await router.push('/');
+    await router.isReady();
+    const w = mount(ProjectCard, {
+      props: { project: { ...HasMetrics, totalCostUsd: 4.5, hasUnpriced: true } },
+      global: { plugins: [router] },
+    });
+    const cell = w.find('[data-testid="metric-ai-cost-alpha"]');
+    expect(cell.text()).toBe('$4.5000 + unpriced');
+    expect(cell.text()).not.toBe('$4.5000');
+    expect(cell.text()).not.toContain('n/a');
+  });
+
+  it('renders "$0.00 + unpriced" when a zero priced-sum still has unpriced runs', async () => {
+    const router = makeRouter();
+    await router.push('/');
+    await router.isReady();
+    const w = mount(ProjectCard, {
+      props: { project: { ...HasMetrics, totalCostUsd: 0, hasUnpriced: true } },
+      global: { plugins: [router] },
+    });
+    expect(w.find('[data-testid="metric-ai-cost-alpha"]').text()).toBe('$0.00 + unpriced');
+  });
+
+  it('omits the AI cost metric when the row carries no cost field (v4-shaped row)', async () => {
+    const router = makeRouter();
+    await router.push('/');
+    await router.isReady();
+    const w = mount(ProjectCard, {
+      props: { project: HasMetrics },
+      global: { plugins: [router] },
+    });
+    expect(w.find('[data-testid="metric-ai-cost-alpha"]').exists()).toBe(false);
   });
 });

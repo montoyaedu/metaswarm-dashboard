@@ -1,0 +1,10 @@
+{"meta":"synthetic-fixture-do-not-replace-with-real-transcript","schemaVersion":1}
+{"type":"system","subtype":"init","timestamp":"2026-05-19T08:00:00.000Z","sessionId":"sess-ai-title-present"}
+{"type":"user","uuid":"evt-001","timestamp":"2026-05-19T08:00:01.000Z","sessionId":"sess-ai-title-present","cwd":"/home/operator/widget-service","message":{"role":"user","content":"Add a parser for the ai-title transcript record."}}
+{"type":"ai-title","aiTitle":"Draft session title from the early heuristic","sessionId":"sess-ai-title-present"}
+{"type":"assistant","uuid":"evt-002","timestamp":"2026-05-19T08:00:05.000Z","sessionId":"sess-ai-title-present","cwd":"/home/operator/widget-service","message":{"role":"assistant","content":[{"type":"text","text":"I will start by reading the existing parser."}]}}
+{"type":"last-prompt","prompt":"Add a parser for the ai-title transcript record.","sessionId":"sess-ai-title-present"}
+{"type":"permission-mode","mode":"default","sessionId":"sess-ai-title-present"}
+{"type":"ai-title","aiTitle":"Draft session title from the early heuristic","sessionId":"sess-ai-title-present"}
+{"type":"assistant","uuid":"evt-003","timestamp":"2026-05-19T08:00:30.000Z","sessionId":"sess-ai-title-present","cwd":"/home/operator/widget-service","message":{"role":"assistant","content":[{"type":"tool_use","name":"Read","input":{"file_path":"/home/operator/widget-service/src/jsonl-reader.ts"}}]}}
+{"type":"ai-title","aiTitle":"Implement the ai-title parser branch in jsonl-reader","sessionId":"sess-ai-title-present"}

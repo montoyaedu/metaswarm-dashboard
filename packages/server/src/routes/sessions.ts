@@ -66,6 +66,11 @@ export function registerSessionsRoutes(
           ref.projectName,
           ref.sessionId,
         );
+        // v5-7 (design §7): the session's cost fields. `costUsd` is `null`
+        // IFF the session has no costable assistant records; `hasUnpriced`
+        // flags a lower-bound total. The session cost merges the main
+        // transcript with its `subagents/agent-*.jsonl` siblings.
+        const summaryCost = deps.cost.sessionSummaryCost(ref);
         sessions.push({
           projectName: ref.projectName,
           sessionId: ref.sessionId,
@@ -73,9 +78,18 @@ export function registerSessionsRoutes(
           lastEventAt: timeline.lastEventAt,
           eventCount: timeline.eventCount,
           rated: rating !== null,
+          // v5-6 / v5-7: the Claude-generated title, or `null` when absent.
+          aiTitle: timeline.aiTitle ?? null,
+          costUsd: summaryCost.costUsd,
+          hasUnpriced: summaryCost.hasUnpriced,
         });
       }
-      void reply.code(200).type('application/json').send({ sessions });
+      // v5-7 (design §7): `pricingAsOf` rides along on every cost-bearing
+      // response so the UI can show "prices as of …".
+      void reply
+        .code(200)
+        .type('application/json')
+        .send({ sessions, pricingAsOf: deps.cost.pricingAsOf() });
     },
   );
 
@@ -104,10 +118,14 @@ export function registerSessionsRoutes(
 
       const { timeline, rubric } = deps.cache.get(ref.transcriptPath);
       const rating = deps.readSessionRating(deps.dataDir, project, sessionId);
+      // v5-7 (design §7): the detail gains `cost: SessionCost` (merged over
+      // the main transcript + its `subagents/agent-*.jsonl`); `pricingAsOf`
+      // rides along. The timeline already carries `aiTitle` (v5-6).
+      const cost = deps.cost.sessionCost(ref);
       void reply
         .code(200)
         .type('application/json')
-        .send({ timeline, rubric, rating });
+        .send({ timeline, rubric, rating, cost, pricingAsOf: deps.cost.pricingAsOf() });
     },
   );
 }

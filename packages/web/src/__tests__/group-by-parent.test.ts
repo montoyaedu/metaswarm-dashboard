@@ -103,4 +103,17 @@ describe('groupByParent', () => {
   it('returns empty array when no projects', () => {
     expect(groupByParent([])).toEqual([]);
   });
+
+  // v5-10: groupByParent is generic — a cost-bearing row keeps its cost
+  // fields through the grouping (the SPA card reads them off the group).
+  it('preserves the v5-7 cost fields on grouped rows', () => {
+    const withCost = {
+      ...p('alpha', '/Users/me/code/alpha'),
+      totalCostUsd: 7.5,
+      hasUnpriced: true,
+    };
+    const groups = groupByParent([withCost]);
+    expect(groups[0]?.projects[0]?.totalCostUsd).toBe(7.5);
+    expect(groups[0]?.projects[0]?.hasUnpriced).toBe(true);
+  });
 });

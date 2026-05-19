@@ -1,0 +1,7 @@
+{"meta":"synthetic-fixture-do-not-replace-with-real-transcript","schemaVersion":1}
+{"type":"system","subtype":"init","timestamp":"2026-05-19T09:00:00.000Z","sessionId":"sess-ai-title-absent"}
+{"type":"user","uuid":"evt-001","timestamp":"2026-05-19T09:00:01.000Z","sessionId":"sess-ai-title-absent","cwd":"/home/operator/widget-service","message":{"role":"user","content":"Run the test suite."}}
+{"type":"last-prompt","prompt":"Run the test suite.","sessionId":"sess-ai-title-absent"}
+{"type":"permission-mode","mode":"default","sessionId":"sess-ai-title-absent"}
+{"type":"assistant","uuid":"evt-002","timestamp":"2026-05-19T09:00:04.000Z","sessionId":"sess-ai-title-absent","cwd":"/home/operator/widget-service","message":{"role":"assistant","content":[{"type":"text","text":"Running the suite now."}]}}
+{"type":"summary","summary":"Short session with no generated title."}

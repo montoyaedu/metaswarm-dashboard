@@ -1,0 +1,4 @@
+{"timestamp":"2026-05-11T13:23:43.015Z","type":"session_meta","payload":{"cwd":"/somewhere/else/unconfigured"}}
+{"timestamp":"2026-05-11T13:23:43.019Z","type":"turn_context","payload":{"model":"gpt-5.5"}}
+{"timestamp":"2026-05-11T13:23:43.552Z","type":"event_msg","payload":{"type":"token_count","info":null}}
+{"timestamp":"2026-05-11T13:23:46.278Z","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":23880,"cached_input_tokens":21376,"output_tokens":5,"reasoning_output_tokens":0,"total_tokens":23885}}}}
