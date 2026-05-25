@@ -21,6 +21,8 @@ const CreateTaskBody = z.object({
     )
     .optional(),
   tags: z.array(z.string()).optional(),
+  workingDir: z.string().optional(),
+  gitRemote: z.string().optional(),
 });
 
 const ApproveCheckpointBody = z.object({
@@ -91,11 +93,13 @@ export function registerVirtualFactoryRoutes(app: FastifyInstance): void {
       });
     }
     try {
-      const { goal, workUnits, tags } = parsed.data;
+      const { goal, workUnits, tags, workingDir, gitRemote } = parsed.data;
       const result = await dana.createTask(
         goal,
         workUnits as WorkUnitInput[] | undefined,
         tags,
+        workingDir,
+        gitRemote,
       );
       return reply.code(201).send(result);
     } catch (err) {

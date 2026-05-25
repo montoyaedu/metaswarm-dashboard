@@ -111,6 +111,8 @@ export interface UseVfCreateTaskState {
     goal: string,
     workUnits?: WorkUnitInput[],
     tags?: string[],
+    workingDir?: string,
+    gitRemote?: string,
   ) => Promise<{ id: string } | null>;
 }
 
@@ -124,11 +126,13 @@ export function useVfCreateTask(
     goal: string,
     workUnits?: WorkUnitInput[],
     tags?: string[],
+    workingDir?: string,
+    gitRemote?: string,
   ): Promise<{ id: string } | null> {
     creating.value = true;
     error.value = null;
     try {
-      return await client.createTask(goal, workUnits, tags);
+      return await client.createTask(goal, workUnits, tags, workingDir, gitRemote);
     } catch (err) {
       error.value = err instanceof Error ? err : new Error(String(err));
       return null;

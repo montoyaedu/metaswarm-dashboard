@@ -27,6 +27,10 @@ const { creating, error, create } = useVfCreateTask();
 const goal = ref('');
 const workUnits = ref<{ title: string; spec: string; checkpoint: boolean }[]>([]);
 const tags = ref('');
+const workingDir = ref('');
+const gitRemote = ref('');
+
+const validationError = ref('');
 
 function addWu(): void {
   workUnits.value.push({ title: '', spec: '', checkpoint: false });
@@ -36,8 +40,21 @@ function removeWu(index: number): void {
   workUnits.value.splice(index, 1);
 }
 
+function validate(): boolean {
+  validationError.value = '';
+  if (!goal.value.trim()) {
+    validationError.value = 'Goal is required';
+    return false;
+  }
+  if (!workingDir.value.trim() && !gitRemote.value.trim()) {
+    validationError.value = 'Provide at least one of Working Directory or Git Remote URL';
+    return false;
+  }
+  return true;
+}
+
 async function handleSubmit(): Promise<void> {
-  if (!goal.value.trim()) return;
+  if (!validate()) return;
   const wus = workUnits.value
     .filter((wu) => wu.title.trim() && wu.spec.trim())
     .map((wu) => ({
@@ -49,11 +66,20 @@ async function handleSubmit(): Promise<void> {
     .split(',')
     .map((t) => t.trim())
     .filter(Boolean);
-  const result = await create(goal.value.trim(), wus.length > 0 ? wus : undefined, tagList.length > 0 ? tagList : undefined);
+  const result = await create(
+    goal.value.trim(),
+    wus.length > 0 ? wus : undefined,
+    tagList.length > 0 ? tagList : undefined,
+    workingDir.value.trim() || undefined,
+    gitRemote.value.trim() || undefined,
+  );
   if (result) {
     goal.value = '';
     workUnits.value = [];
     tags.value = '';
+    workingDir.value = '';
+    gitRemote.value = '';
+    validationError.value = '';
     emit('created', result.id);
     emit('update:show', false);
   }
@@ -109,8 +135,21 @@ async function handleSubmit(): Promise<void> {
         <NInput v-model:value="tags" placeholder="tag1, tag2, tag3" />
       </NFormItem>
 
-      <div v-if="error" style="color: #e88080; font-size: 0.85rem; margin-bottom: 8px">
-        {{ error.message }}
+      <NCard size="tiny" style="margin-bottom: 8px">
+        <template #header><span style="font-size: 0.85rem">Repository</span></template>
+        <NSpace vertical>
+          <NFormItem label="Working Directory (local path)">
+            <NInput v-model:value="workingDir" placeholder="/path/to/repo" />
+          </NFormItem>
+          <NFormItem label="Git Remote URL">
+            <NInput v-model:value="gitRemote" placeholder="https://github.com/user/repo.git" />
+          </NFormItem>
+          <span style="font-size: 0.75rem; opacity: 0.6">At least one is required. The server working directory cannot be used.</span>
+        </NSpace>
+      </NCard>
+
+      <div v-if="error || validationError" style="color: #e88080; font-size: 0.85rem; margin-bottom: 8px">
+        {{ validationError || error?.message }}
       </div>
 
       <NSpace justify="end">

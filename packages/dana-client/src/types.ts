@@ -117,6 +117,8 @@ export interface CreateTaskInput {
   goal: string;
   workUnits?: WorkUnitInput[];
   tags?: string[];
+  workingDir?: string;
+  gitRemote?: string;
 }
 
 export interface CheckpointSummary {

@@ -150,7 +150,7 @@ export interface WorkUnitInput {
 export interface VirtualFactoryApiClient {
   listTasks(status?: string): Promise<TaskSummary[]>;
   getTask(id: string): Promise<TaskDetail>;
-  createTask(goal: string, workUnits?: WorkUnitInput[], tags?: string[]): Promise<{ id: string }>;
+  createTask(goal: string, workUnits?: WorkUnitInput[], tags?: string[], workingDir?: string, gitRemote?: string): Promise<{ id: string }>;
   cancelTask(id: string): Promise<void>;
   deleteTask(id: string): Promise<void>;
   listCheckpoints(): Promise<CheckpointSummary[]>;
@@ -166,8 +166,8 @@ export function createVirtualFactoryClient(): VirtualFactoryApiClient {
       return request<TaskSummary[]>('GET', `${base}/tasks${qs}`);
     },
     getTask: (id: string) => request<TaskDetail>('GET', `${base}/tasks/${encodeURIComponent(id)}`),
-    createTask: (goal, workUnits, tags) =>
-      request<{ id: string }>('POST', `${base}/tasks`, { goal, workUnits, tags }),
+    createTask: (goal, workUnits, tags, workingDir, gitRemote) =>
+      request<{ id: string }>('POST', `${base}/tasks`, { goal, workUnits, tags, workingDir, gitRemote }),
     cancelTask: (id) =>
       request<void>('POST', `${base}/tasks/${encodeURIComponent(id)}/cancel`),
     deleteTask: (id) =>

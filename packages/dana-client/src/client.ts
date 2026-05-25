@@ -67,7 +67,7 @@ function createRequest(fetchImpl: typeof fetch) {
 export interface DanaClient {
   listTasks(status?: string): Promise<TaskSummary[]>;
   getTask(id: string): Promise<TaskDetail>;
-  createTask(goal: string, workUnits?: WorkUnitInput[], tags?: string[]): Promise<{ id: string }>;
+  createTask(goal: string, workUnits?: WorkUnitInput[], tags?: string[], workingDir?: string, gitRemote?: string): Promise<{ id: string }>;
   cancelTask(id: string): Promise<void>;
   deleteTask(id: string): Promise<void>;
   listCheckpoints(): Promise<CheckpointSummary[]>;
@@ -90,8 +90,8 @@ export function createDanaClient(
       return request<TaskSummary[]>(url, 'GET', `/api/tasks${qs}`);
     },
     getTask: (id: string) => request<TaskDetail>(url, 'GET', `/api/tasks/${encodeURIComponent(id)}`),
-    createTask: (goal: string, workUnits?: WorkUnitInput[], tags?: string[]) =>
-      request<{ id: string }>(url, 'POST', '/api/tasks', { goal, workUnits, tags }),
+    createTask: (goal: string, workUnits?: WorkUnitInput[], tags?: string[], workingDir?: string, gitRemote?: string) =>
+      request<{ id: string }>(url, 'POST', '/api/tasks', { goal, workUnits, tags, workingDir, gitRemote }),
     cancelTask: (id: string) =>
       request<void>(url, 'POST', `/api/tasks/${encodeURIComponent(id)}/cancel`),
     deleteTask: (id: string) =>
