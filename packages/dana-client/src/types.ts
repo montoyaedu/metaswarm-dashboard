@@ -82,9 +82,16 @@ export interface TaskEvent {
   wu?: string;
   filesChanged?: string[];
   commitHash?: string;
+  message?: string;
+  author?: string;
+  insertions?: number;
+  deletions?: number;
   output?: string;
   phases?: WuPhase[];
   planReview?: PlanReviewer[];
+  directory?: string;
+  branch?: string;
+  fromRemote?: boolean;
 }
 
 export interface TaskDetail {

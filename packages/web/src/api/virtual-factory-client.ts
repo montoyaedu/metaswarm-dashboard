@@ -11,14 +11,20 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     body: body !== undefined ? JSON.stringify(body) : null,
   });
   if (!res.ok) {
-    let errorBody: unknown;
+    let serverMsg: string | undefined;
     try {
-      errorBody = await res.json();
+      const errorBody: unknown = await res.json();
+      if (typeof errorBody === 'object' && errorBody !== null) {
+        const err = (errorBody as Record<string, unknown>).error;
+        if (typeof err === 'object' && err !== null) {
+          serverMsg = (err as Record<string, unknown>).message as string | undefined;
+        }
+      }
     } catch {
-      errorBody = await res.text().catch(() => undefined);
+      // ignore parse failures
     }
     throw new ApiClientError(
-      `${method} ${path} → ${res.status}`,
+      serverMsg ?? `${method} ${path} → ${res.status}`,
       res.status,
     );
   }
@@ -103,9 +109,16 @@ export interface TaskEvent {
   wu?: string;
   filesChanged?: string[];
   commitHash?: string;
+  message?: string;
+  author?: string;
+  insertions?: number;
+  deletions?: number;
   output?: string;
   phases?: WuPhase[];
   planReview?: PlanReviewer[];
+  directory?: string;
+  branch?: string;
+  fromRemote?: boolean;
 }
 
 export interface TaskDetail {

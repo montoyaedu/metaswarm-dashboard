@@ -30,10 +30,18 @@ const ApproveCheckpointBody = z.object({
 
 function danaErrorHandler(reply: FastifyReply, err: unknown): void {
   if (err instanceof DanaClientError) {
+    const body = err.body;
+    let message = err.message;
+    if (typeof body === 'object' && body !== null) {
+      const bodyErr = (body as Record<string, unknown>).error;
+      if (typeof bodyErr === 'string') {
+        message = bodyErr;
+      }
+    }
     void reply.code(err.status).send({
       error: {
         code: 'dana_error',
-        message: err.message,
+        message,
         detail: err.body,
       },
     });

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { NBadge, NCollapse, NCollapseItem, NDataTable, NList, NListItem, NSpace, NTag } from 'naive-ui';
-import { computed } from 'vue';
+import { computed, h } from 'vue';
 
 import type { WorkUnitDetail, WuResult } from '../api/virtual-factory-client.js';
 
@@ -55,6 +55,7 @@ const summaryColumns = [
   { title: 'WU', key: 'id', width: 80 },
   { title: 'Committed', key: 'committed', width: 100, render: (row: WuResult): string => row.committed ? '✓' : '✗' },
   { title: 'Attempts', key: 'implementAttempts', width: 90 },
+  { title: 'Review', key: 'reviewPassed', width: 80, render: (row: WuResult) => h(NTag, { type: row.reviewPassed ? 'success' : 'warning', size: 'tiny' }, { default: () => row.reviewPassed ? 'Pass' : (row.reviewPassed === false ? 'Fail' : '—') }) },
   { title: 'Errors', key: 'errors', render: (row: WuResult): string => row.errors?.length ? row.errors.join('; ') : '—' },
 ];
 
