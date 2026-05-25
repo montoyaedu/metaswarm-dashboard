@@ -5,6 +5,8 @@ import ProjectDetail from './views/ProjectDetail.vue';
 import ProjectsIndex from './views/ProjectsIndex.vue';
 import SessionDetailView from './views/SessionDetailView.vue';
 import SessionsView from './views/SessionsView.vue';
+import VirtualFactoryTaskDetail from './views/VirtualFactoryTaskDetail.vue';
+import VirtualFactoryView from './views/VirtualFactoryView.vue';
 
 export function createAppRouter(): Router {
   return createRouter({
@@ -18,6 +20,12 @@ export function createAppRouter(): Router {
         path: '/sessions/:project/:sessionId',
         name: 'session-detail',
         component: SessionDetailView,
+      },
+      { path: '/virtual-factory', name: 'virtual-factory', component: VirtualFactoryView },
+      {
+        path: '/virtual-factory/tasks/:id',
+        name: 'virtual-factory-task-detail',
+        component: VirtualFactoryTaskDetail,
       },
     ],
   });

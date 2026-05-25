@@ -31,6 +31,7 @@ import { createTranscriptCache } from './data/transcript-cache.js';
 import { registerMethodGuard } from './plugins/method-guard.js';
 import { registerSpa } from './plugins/spa.js';
 import { registerAgentsRoute } from './routes/agents.js';
+import { registerVirtualFactoryRoutes } from './api/virtual-factory.js';
 import { registerCalibrationRoute } from './routes/calibration.js';
 import { registerProjectsByNameRoute } from './routes/projects-by-name.js';
 import { registerProjectsRoute } from './routes/projects.js';
@@ -204,6 +205,10 @@ export async function buildServer(opts: BuildServerOptions): Promise<FastifyInst
     aggregateCalibration: (dataDir, asOf) => aggregateCalibration(dataDir, asOf),
     now,
   });
+
+  // Virtual Software Factory control-plane (proxy to Dana Server).
+  // Registered before the SPA fallback so its API routes take priority.
+  registerVirtualFactoryRoutes(app);
 
   // SPA static + fallback last (catch-all setNotFoundHandler).
   await registerSpa(app, { staticRoot: opts.staticRoot });

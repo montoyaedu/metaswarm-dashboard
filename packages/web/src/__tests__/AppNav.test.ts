@@ -22,6 +22,7 @@ function makeRouter(): Router {
         name: 'session-detail',
         component: stub('session-detail'),
       },
+      { path: '/virtual-factory', name: 'virtual-factory', component: stub('virtual-factory') },
     ],
   });
 }
@@ -34,7 +35,7 @@ async function mountNav(router: Router): Promise<ReturnType<typeof mount>> {
 }
 
 describe('AppNav', () => {
-  it('renders Projects, Agents and Sessions links', async () => {
+  it('renders Projects, Agents, Sessions and Virtual Factory links', async () => {
     const router = makeRouter();
     await router.push('/');
     const w = await mountNav(router);
@@ -42,6 +43,7 @@ describe('AppNav', () => {
     expect(text).toContain('Projects');
     expect(text).toContain('Agents');
     expect(text).toContain('Sessions');
+    expect(text).toContain('Virtual Factory');
   });
 
   it('highlights Sessions as active when on /sessions', async () => {

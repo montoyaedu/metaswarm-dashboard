@@ -18,6 +18,7 @@ const NAV_ITEMS: readonly NavItem[] = [
   { label: 'Projects', key: 'projects-index', path: '/' },
   { label: 'Agents', key: 'agents', path: '/agents' },
   { label: 'Sessions', key: 'sessions', path: '/sessions' },
+  { label: 'Virtual Factory', key: 'virtual-factory', path: '/virtual-factory' },
 ];
 
 const route = useRoute();

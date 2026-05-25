@@ -1,13 +1,15 @@
 <script setup lang="ts">
-import { NConfigProvider, darkTheme } from 'naive-ui';
+import { NConfigProvider, NMessageProvider, darkTheme } from 'naive-ui';
 
 import AppNav from './components/AppNav.vue';
 </script>
 
 <template>
   <NConfigProvider :theme="darkTheme">
-    <AppNav />
-    <RouterView />
+    <NMessageProvider>
+      <AppNav />
+      <RouterView />
+    </NMessageProvider>
   </NConfigProvider>
 </template>
 

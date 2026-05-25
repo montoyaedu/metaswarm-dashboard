@@ -11,6 +11,7 @@ export default defineConfig({
     projects: [
       'packages/types',
       'packages/collector',
+      'packages/dana-client',
       'packages/sessions',
       'packages/server',
       'packages/web',
@@ -43,7 +44,11 @@ export default defineConfig({
         'packages/types/src/index.ts',
         'packages/collector/src/index.ts',
         'packages/sessions/src/index.ts',
+        'packages/dana-client/src/index.ts',
         'packages/server/src/index.ts',
+        // Virtual factory routes require a running Dana server — tested via
+        // integration tests, not unit/component coverage.
+        'packages/server/src/api/virtual-factory.ts',
         // Screenshot capture script (Playwright; runs out-of-band only).
         'scripts/**',
       ],

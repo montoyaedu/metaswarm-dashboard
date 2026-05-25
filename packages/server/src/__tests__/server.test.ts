@@ -172,6 +172,37 @@ describe('Method guard — 405 on non-allow-listed /api/* writes', () => {
     });
   }
 
+  // Virtual-factory allow-list: POST and other methods must NOT 405 on
+  // /api/virtual-factory/* paths.
+  for (const method of ['POST', 'PUT', 'DELETE'] as const) {
+    it(`${method} /api/virtual-factory/tasks passes the guard (allow-listed prefix)`, async () => {
+      const app = await makeApp();
+      const res = await app.inject({ method, url: '/api/virtual-factory/tasks' });
+      // The guard lets it through; the route itself may return 404/502 but
+      // the point is it is NOT a 405.
+      expect(res.statusCode).not.toBe(405);
+      await app.close();
+    });
+  }
+
+  it('POST /api/virtual-factory/checkpoints/:taskId/approve passes the guard', async () => {
+    const app = await makeApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/virtual-factory/checkpoints/t1/approve',
+    });
+    expect(res.statusCode).not.toBe(405);
+    await app.close();
+  });
+
+  // Virtual-factory write on non-/api-vf path still 405s.
+  it('POST /api/virtual-factory-not-real is still 405 (not a prefix match)', async () => {
+    const app = await makeApp();
+    const res = await app.inject({ method: 'POST', url: '/api/virtual-factory-not-real/x' });
+    expect(res.statusCode).toBe(405);
+    await app.close();
+  });
+
   // Exact-match rejections — the allow-list must not re-open the surface
   // (design §3.3, plan R2). Each of these is a PUT that LOOKS like the
   // rating route but is not an exact match → still 405.
